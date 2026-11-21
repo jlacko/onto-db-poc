@@ -14,7 +14,7 @@ ontology, a bug in a query, or a question that was not precise enough.
    (12 records) and [`tests/sample-types.csv`](tests/sample-types.csv) (the offence
    types used, with broader type and category). Both are generated from
    `tests/sample-data.ttl`, so don't edit them. UTF-8, comma-separated, dot
-   decimals; a record's types are separated by spaces.
+   decimals; a record's types and categories are separated by spaces.
 2. For each question marked **✍ your answer**, work the answer out by hand
    from the sample table and replace `TODO` in its `expected` block.
 3. Read the *Decision* line. If you disagree with the proposed modelling

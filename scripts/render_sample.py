@@ -6,7 +6,8 @@ Writes (generated from ontology/tests/sample-data.ttl; do not edit):
   ontology/tests/sample-records.csv   one row per record
   ontology/tests/sample-types.csv     the offence types used, with broader type and category
 UTF-8, comma-separated, dot as decimal separator. Multi-valued cells (a record's
-types) are separated by spaces. Nothing here pre-computes a CQ answer.
+types and categories) are separated by spaces. The categories column was added at
+the domain expert's request; the most-specific type is still not pre-computed.
 """
 import csv
 import io
@@ -28,6 +29,13 @@ def code(g, c):
     return int(g.value(c, SKOS.notation))
 
 
+def top_of(g, t):
+    """The category (top-level type) a type rolls up to."""
+    while g.value(t, SKOS.broader) is not None:
+        t = g.value(t, SKOS.broader)
+    return t
+
+
 def _csv(header, rows) -> str:
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\n")
@@ -46,6 +54,7 @@ def render() -> dict:
         st, rel = g.value(r, KRIM.hasClearanceState), g.value(r, KRIM.hasLocationRelevance)
         types = sorted(g.objects(r, KRIM.hasOffenceType), key=lambda t: code(g, t))
         used |= set(types)
+        cats = sorted({code(g, top_of(g, t)) for t in types})
         rows.append([
             str(g.value(r, DCTERMS.identifier)),
             dt[:10], dt[11:16], dt[:7],
@@ -53,11 +62,12 @@ def render() -> dict:
             "yes" if g.value(r, KRIM.recordedByMunicipalPolice).toPython() else "no",
             code(g, st), label(g, st), code(g, rel), label(g, rel),
             " ".join(str(code(g, t)) for t in types),
+            " ".join(str(c) for c in cats),
             str(g.value(r, KRIM.stateAsOf)),
         ])
     records = _csv(["record", "report_date", "report_time", "report_month", "latitude", "longitude",
                     "municipal_police", "state_code", "state", "relevance_code", "relevance", "types",
-                    "state_as_of"], rows)
+                    "categories", "state_as_of"], rows)
 
     trows = []
     for t in sorted(used, key=lambda t: code(g, t)):

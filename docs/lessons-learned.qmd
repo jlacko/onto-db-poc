@@ -106,9 +106,12 @@ broader type and category) so that the hand answers could be worked out in a
 spreadsheet with filters and lookups. The test data did not change, only its
 form; the CSVs are generated from the same Turtle and checked for drift. The
 general point: the "manual" step of the method is manual *thinking*, not manual
-counting, and the reader should get the tool that supports it. The CSVs
-deliberately pre-compute nothing a question asks (no category per record, no
-most-specific type), so the exercise stays an exercise.
+counting, and the reader should get the tool that supports it. The CSVs first
+pre-computed nothing a question asks; the expert then asked for each record's
+categories as a column, because deriving them through lookups was tedium rather
+than insight. The most-specific type (CQ12) is still left to the reader. Where
+to draw that line is itself a design choice of the worksheet: pre-compute the
+mechanics, leave the judgements.
 
 ## Practice 2: An LLM-friendly source format (Adapted)
 
