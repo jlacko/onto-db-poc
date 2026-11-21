@@ -14,7 +14,7 @@ for the API, not a template). Use the venv: `.venv/bin/python`.
 
 | Path | What | Edited by |
 |------|------|-----------|
-| `ontology/competency-questions.md` | The spec. Change it first. | hand |
+| `ontology/competency-questions.md` | The spec. Change it first. The index at the top is generated (`scripts/cq_index.py`). | hand |
 | `ontology/kriminalita.ttl` | Core OWL module: classes, properties, definitions | hand |
 | `ontology/shapes.ttl` | SHACL shapes = closed-world data rules; drive the DDL | hand |
 | `ontology/reference/codelist-texts.csv` | English labels and definitions, Czech business definitions for codelist items | hand |

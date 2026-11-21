@@ -317,6 +317,11 @@ def check_ddl(rep: Report):
         rel = path.relative_to(ONTO.parent)
         rep.add("PASS" if ok else "FAIL", f"{rel} is up to date" if ok
                 else f"{rel} is stale: run scripts/render_sample.py")
+    import cq_index
+    cq_text = (ONTO / "competency-questions.md").read_text(encoding="utf-8")
+    ok = cq_index.apply(cq_text) == cq_text
+    rep.add("PASS" if ok else "FAIL", "ontology/competency-questions.md: the CQ index is up to date" if ok
+            else "ontology/competency-questions.md: the CQ index is stale: run scripts/cq_index.py")
     import generate_glossary
     for path, text in generate_glossary.outputs()[1].items():
         ok = path.exists() and path.read_text(encoding="utf-8") == text

@@ -43,7 +43,7 @@ publisher has a newer version and the cached copy is older than `--max-age-days`
 Regenerate the generated artifacts after changing their sources:
 
 ```bash
-.venv/bin/python scripts/build_reference.py && .venv/bin/python scripts/generate_ddl.py && .venv/bin/python scripts/render_sample.py && .venv/bin/python scripts/generate_dictionary.py --pdf && .venv/bin/python scripts/generate_glossary.py --pdf
+.venv/bin/python scripts/build_reference.py && .venv/bin/python scripts/generate_ddl.py && .venv/bin/python scripts/render_sample.py && .venv/bin/python scripts/cq_index.py && .venv/bin/python scripts/generate_dictionary.py --pdf && .venv/bin/python scripts/generate_glossary.py --pdf
 ```
 
 Requires Java (HermiT runs through owlready2) and, for the PDFs, Quarto with a LaTeX engine and Graphviz.
