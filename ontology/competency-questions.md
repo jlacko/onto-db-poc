@@ -159,12 +159,17 @@ type | records
 ### CQ13: Records spanning two categories ✍ your answer
 **Question.** Which records combine offence types from two or more different
 categories, and which categories?
-**Decision.** Categories are the top-level ancestors of a record's types.
-Write one row per record and category.
+**Decision.** Categories are the top-level ancestors of a record's types (the
+`categories` column of `sample-records.csv`). Several types in the same category
+count once: `18 19` is one category. List only records with two or more
+categories, and write **one row per record and category**: a record with two
+categories gives two rows, a record with one category is not listed. Example:
+a record 9999 with categories `18 35` gives the rows `9999 | 18` and `9999 | 35`.
 
 ```expected
 record | category
-TODO
+1004 | 1
+1013 | 63
 ```
 
 ## B. Place and time
