@@ -1,0 +1,257 @@
+@prefix krim:    <https://example.org/kriminalita/ontology#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix geo:     <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix vs:      <http://www.w3.org/2003/06/sw-vocab-status/ns#> .
+
+# =====================================================================
+# Ontology header
+# =====================================================================
+
+<https://example.org/kriminalita/ontology>
+    a owl:Ontology ;
+    dcterms:title "Kriminalita ontology"@en , "Ontologie kriminality"@cs ;
+    dcterms:description """Concepts for offence records published by the Police of the
+Czech Republic at kriminalita.policie.gov.cz: the records themselves, their offence
+types, clearance states and location relevance, as one continuous history keyed by
+the record identifier (the publisher's monthly download files are pagination, not part
+of the model). Location data exist from about mid-2013. Built ontology-first as a proof of concept; the SQLite schema is
+generated from the SHACL shapes that accompany this module."""@en ;
+    owl:versionIRI <https://example.org/kriminalita/ontology/0.1.0> ;
+    owl:versionInfo "0.1.0" ;
+    dcterms:modified "2026-11-21T00:00:00"^^xsd:dateTime ;
+    dcterms:source <https://kriminalita.policie.gov.cz/> ;
+    rdfs:comment """Release 0.1.0: initial draft. Placeholder namespace example.org. Before
+release, the monthly extract (krim:MonthlyExtract, krim:referenceMonth, krim:publishedIn)
+was removed: the monthly files are the publisher's pagination, not a domain concept.
+krim:stateAsOf replaces it as the time axis of observation."""@en .
+
+# =====================================================================
+# Annotation properties reused (declared for OWL DL tooling)
+# =====================================================================
+
+skos:definition  a owl:AnnotationProperty .
+skos:scopeNote   a owl:AnnotationProperty .
+skos:example     a owl:AnnotationProperty .
+skos:editorialNote a owl:AnnotationProperty .
+skos:prefLabel   a owl:AnnotationProperty .
+skos:altLabel    a owl:AnnotationProperty .
+skos:notation    a owl:AnnotationProperty .
+vs:term_status   a owl:AnnotationProperty .
+dcterms:title    a owl:AnnotationProperty .
+dcterms:description a owl:AnnotationProperty .
+dcterms:source   a owl:AnnotationProperty .
+
+krim:businessDefinition
+    a owl:AnnotationProperty ;
+    rdfs:subPropertyOf skos:definition ;
+    rdfs:label "business definition"@en , "věcná definice"@cs ;
+    skos:definition """A business definition is an annotation that gives a plain-language
+definition of a term for business readers in their own language (Czech here). It
+complements the formal English skos:definition, which is written for modellers."""@en ;
+    skos:scopeNote "Not a translation of the formal definition but a second definition for a second audience; both must describe the same concept."@en ;
+    vs:term_status "draft" .
+
+# =====================================================================
+# Classes
+# =====================================================================
+
+krim:OffenceRecord
+    a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "offence record"@en , "záznam o deliktu"@cs ;
+    skos:altLabel "delikt"@cs , "incident"@en ;
+    skos:definition """An offence record is an information record, kept by the Police
+of the Czech Republic, about one act reported to or detected by the police that is
+suspected to be a crime or a misdemeanour."""@en ;
+    skos:example "Record 25719550: an intentional bodily harm on 19 February 2025 at 20:34, unsolved."@en ;
+    skos:scopeNote """The record, not the act: a record exists even when the police
+later conclude that the act did not occur or is not an offence (see
+krim:ClearanceState). Records reflect the last state while the police handled the
+case; later decisions of prosecutors or courts are not reflected. Only offence
+types whose publication has a preventive purpose are published."""@en ;
+    krim:businessDefinition "Záznam Policie ČR o jednom skutku, který byl policii oznámen nebo který policie sama zjistila a který je podezřelý z trestného činu nebo přestupku."@cs ;
+    skos:example "Záznam 25719550: úmyslné ublížení na zdraví oznámené 19. 2. 2025 ve 20:34, neobjasněno."@cs ;
+    skos:scopeNote "Skutek samotný. Záznam existuje i tehdy, když policie později zjistí, že se skutek nestal nebo není trestným činem. Pozdější rozhodnutí státního zástupce nebo soudu se v záznamu neprojeví."@cs ;
+    vs:term_status "draft" .
+
+krim:OffenceType
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "offence type"@en , "třída deliktu"@cs ;
+    skos:altLabel "typ deliktu"@cs , "druh deliktu"@cs , "offence class"@en ;
+    skos:definition """An offence type is a concept in the Police CR classification of
+offences ("Číselník tříd") that classifies offence records by the kind of act."""@en ;
+    skos:example "Burglary – flat (code 19), a subtype of Burglary (code 18)."@en ;
+    skos:scopeNote """Not a legal qualification under the Criminal Code; it is the
+publisher's own statistical classification and also contains misdemeanours, fires
+and traffic accidents. The classification is a hierarchy (skos:broader), and a
+record is tagged with a type together with all its broader types."""@en ;
+    krim:businessDefinition "Třída kriminalisticko-statistické evidence Policie ČR, podle které se záznamy třídí podle druhu skutku. Třídy tvoří hierarchii: kategorie (např. Krádeže vloupáním) a jejich podtřídy (např. Byt)."@cs ;
+    skos:example "Krádeže vloupáním – byt (kód 19), podtřída kategorie Krádeže vloupáním (kód 18)."@cs ;
+    skos:scopeNote "Právní kvalifikace podle trestního zákoníku. Jde o statistickou klasifikaci policie, která zahrnuje i přestupky, požáry a dopravní nehody. Záznam nese svou třídu spolu se všemi nadřazenými třídami."@cs ;
+    vs:term_status "draft" .
+
+krim:ClearanceState
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "clearance state"@en , "stav objasnění"@cs ;
+    skos:definition """A clearance state is a concept that classifies an offence record
+by the outcome of the police inquiry into the recorded act."""@en ;
+    skos:example "Probable offender identified (code 1)."@en ;
+    skos:scopeNote "Not the outcome of prosecution or a court decision."@en ;
+    krim:businessDefinition "Výsledek policejního šetření skutku, například zda byl zjištěn pravděpodobný pachatel."@cs ;
+    skos:example "Zjištěn pravděpodobný pachatel (kód 1)."@cs ;
+    skos:scopeNote "Výsledek trestního stíhání nebo rozhodnutí soudu. Stav se v čase mění a platí vždy jen ke dni uvedenému jako stav ke dni."@cs ;
+    vs:term_status "draft" .
+
+krim:LocationRelevance
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "location relevance"@en , "relevance lokality"@cs ;
+    skos:definition """A location relevance is a concept that classifies the recorded
+location of an offence record by what that location stands for in relation to the
+act."""@en ;
+    skos:example "Place of commission (code 4)."@en ;
+    skos:scopeNote "Says what the place means, not how precise it is; all published locations are anonymised."@en ;
+    krim:businessDefinition "Údaj o tom, co zveřejněné místo u záznamu znamená: místo spáchání, místo oznámení, místo následku a podobně."@cs ;
+    skos:example "Místo spáchání (kód 4)."@cs ;
+    skos:scopeNote "Přesnost polohy. Všechny zveřejněné polohy jsou anonymizované bez ohledu na relevanci."@cs ;
+    vs:term_status "draft" .
+
+# Modest axioms the reasoner can check: records and codelist concepts are
+# different kinds of things, and the three codelists do not overlap.
+[] a owl:AllDisjointClasses ;
+    owl:members ( krim:OffenceRecord skos:Concept ) .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( krim:OffenceType krim:ClearanceState krim:LocationRelevance ) .
+
+# =====================================================================
+# Object properties
+# =====================================================================
+
+krim:hasOffenceType
+    a owl:ObjectProperty ;
+    rdfs:label "has offence type"@en , "má typ deliktu"@cs ;
+    skos:definition "A relation that assigns an offence type to an offence record."@en ;
+    skos:scopeNote "A record usually has several types: the most specific ones and all their broader types."@en ;
+    vs:term_status "draft" .
+
+krim:hasClearanceState
+    a owl:ObjectProperty ;
+    rdfs:label "has clearance state"@en , "má stav objasnění"@cs ;
+    skos:definition "A relation that assigns its current clearance state to an offence record."@en ;
+    vs:term_status "draft" .
+
+krim:hasLocationRelevance
+    a owl:ObjectProperty ;
+    rdfs:label "has location relevance"@en , "má relevanci lokality"@cs ;
+    skos:definition "A relation that states what the recorded location of an offence record stands for."@en ;
+    vs:term_status "draft" .
+
+# =====================================================================
+# Datatype properties
+# =====================================================================
+
+krim:reportDateTime
+    a owl:DatatypeProperty ;
+    rdfs:subPropertyOf dcterms:date ;
+    rdfs:label "report date and time"@en , "datum a čas oznámení"@cs ;
+    skos:altLabel "datum ohlášení"@cs ;
+    skos:definition """A date-time property that gives the date and time, to the minute
+and with time zone, at which the recorded act was entered into the Police CR register
+as reported."""@en ;
+    skos:example "2025-02-19T20:34:00+01:00"@en ;
+    skos:scopeNote """Not the time of commission. The publisher's help (napoveda,
+"Filtrování dle období") states that an act reported on one day but entered into the
+register the next day appears under the next day. Times of exactly 00:00 may stand
+for an unknown time of day."""@en ;
+    dcterms:source <https://kriminalita.policie.gov.cz/napoveda/#/rozvrzeni> ;
+    krim:businessDefinition "Datum a čas, kdy byl skutek oznámen a zapsán do evidence Policie ČR, s přesností na minuty."@cs ;
+    skos:example "19. 2. 2025 ve 20:34."@cs ;
+    skos:scopeNote "Okamžik spáchání skutku. Skutek oznámený pozdě večer a zapsaný až další den se počítá ke dni zápisu. Čas 00:00 může znamenat neznámý čas."@cs ;
+    vs:term_status "draft" .
+
+krim:anonymisedLatitude
+    a owl:DatatypeProperty ;
+    rdfs:subPropertyOf geo:lat ;
+    rdfs:label "anonymised latitude"@en , "anonymizovaná zeměpisná šířka"@cs ;
+    skos:definition """A coordinate property that gives the WGS-84 latitude of the
+centre of the anonymisation polygon into which the recorded location falls."""@en ;
+    skos:scopeNote """Not the true place of the act. Municipalities are split into
+Voronoi polygons around K-means cluster centres, and every location is moved to its
+polygon's centre; small municipalities form a single polygon. Realises the source
+field "y"; note that the publisher's OpenAPI description mislabels x as latitude and y as
+longitude."""@en ;
+    krim:businessDefinition "Zeměpisná šířka (WGS-84) středu anonymizační oblasti, do které skutečné místo skutku spadá."@cs ;
+    skos:example "50,081 (oblast v centru Prahy)."@cs ;
+    skos:scopeNote "Skutečné místo skutku. Obce jsou rozděleny na oblasti (Voroného polygony) a každá poloha je posunuta do středu své oblasti; malé obce tvoří jedinou oblast."@cs ;
+    vs:term_status "draft" .
+
+krim:anonymisedLongitude
+    a owl:DatatypeProperty ;
+    rdfs:subPropertyOf geo:long ;
+    rdfs:label "anonymised longitude"@en , "anonymizovaná zeměpisná délka"@cs ;
+    skos:definition """A coordinate property that gives the WGS-84 longitude of the
+centre of the anonymisation polygon into which the recorded location falls."""@en ;
+    skos:scopeNote "Not the true place of the act; see krim:anonymisedLatitude. Realises the source field \"x\"."@en ;
+    krim:businessDefinition "Zeměpisná délka (WGS-84) středu anonymizační oblasti, do které skutečné místo skutku spadá."@cs ;
+    skos:example "14,421 (oblast v centru Prahy)."@cs ;
+    skos:scopeNote "Skutečné místo skutku; viz anonymizovaná zeměpisná šířka. Pozor: popis API vydavatele zeměpisnou délku a šířku zaměňuje."@cs ;
+    vs:term_status "draft" .
+
+krim:recordedByMunicipalPolice
+    a owl:DatatypeProperty ;
+    rdfs:label "recorded by municipal police"@en , "evidováno městskou policií"@cs ;
+    skos:definition "A boolean property that states whether an offence record originates from a municipal police force rather than the Police of the Czech Republic."@en ;
+    skos:scopeNote """Realises the source field "mp" (městská policie). The publisher's
+OpenAPI description (/api/v2/docs.json) splits statistics into "sp" (state police) and
+"mp" (municipal police) and describes the codelist flag "mp" as "offence class shared
+with the municipal police". The help pages state that municipal-police offences are
+being integrated through a dedicated interface."""@en ;
+    skos:editorialNote "Meaning corroborated by the OpenAPI description, not stated verbatim for this field; confirm with the publisher."@en ;
+    dcterms:source <https://kriminalita.policie.gov.cz/api/v2/docs.json> ;
+    krim:businessDefinition "Příznak, zda záznam pochází od obecní či městské policie, a nikoli od Policie ČR."@cs ;
+    skos:example "Ano u přestupku, který řešila městská policie."@cs ;
+    skos:scopeNote "Význam je odvozen z dokumentace API vydavatele (statistiky „sp“ a „mp“); u tohoto pole jej vydavatel výslovně nepopisuje, proto je třeba jej ověřit."@cs ;
+    vs:term_status "draft" .
+
+krim:stateAsOf
+    a owl:DatatypeProperty ;
+    rdfs:subPropertyOf prov:generatedAtTime ;
+    rdfs:label "state as of"@en , "stav ke dni"@cs ;
+    skos:definition """A date-time property that gives the moment as of which the
+publisher reported the current state of an offence record (its clearance state, types
+and location)."""@en ;
+    skos:example "2026-11-19T00:27:18: the record was last seen in data the publisher generated at that time."@en ;
+    skos:scopeNote """Observation time, not event time: it says when the state was
+known, not when the act was reported (krim:reportDateTime). Records are investigated
+continuously and republished, so a state can change; only the latest observed state is
+kept, and a clearance rate is meaningful only together with this date. Taken from the
+publisher's 'updated' timestamp of the download that last contained the record."""@en ;
+    krim:businessDefinition "Okamžik, ke kterému vydavatel uvedl současný stav záznamu (stav objasnění, třídy a polohu)."@cs ;
+    skos:example "19. 11. 2026 v 0:27: záznam byl naposledy obsažen v datech, která vydavatel vygeneroval v tu chvíli."@cs ;
+    skos:scopeNote "Datum oznámení. Uchovává se jen poslední známý stav, proto i míra objasněnosti platí jen k tomuto dni; nedávné skutky bývají ještě v šetření."@cs ;
+    vs:term_status "draft" .
+
+# Reused datatype properties, declared for OWL DL tooling.
+dcterms:identifier a owl:DatatypeProperty .
+prov:generatedAtTime a owl:DatatypeProperty .
+dcterms:modified   a owl:DatatypeProperty .
+dcterms:date       a owl:DatatypeProperty .
+geo:lat            a owl:DatatypeProperty .
+geo:long           a owl:DatatypeProperty .
+dcterms:isPartOf   a owl:ObjectProperty .
+skos:broader       a owl:ObjectProperty .
+skos:inScheme      a owl:ObjectProperty .
+skos:exactMatch    a owl:ObjectProperty .
+skos:topConceptOf  a owl:ObjectProperty .
+skos:Concept       a owl:Class .
+skos:ConceptScheme a owl:Class .
+prov:Entity        a owl:Class .

@@ -1,0 +1,5 @@
+# CQ11 As-of of record 1003 and of the whole dataset.
+SELECT ?record_as_of ?dataset_as_of WHERE {
+  ?r dcterms:identifier 1003 ; krim:stateAsOf ?record_as_of .
+  { SELECT (MAX(?a) AS ?dataset_as_of) WHERE { ?x krim:stateAsOf ?a } }
+}

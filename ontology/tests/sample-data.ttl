@@ -1,0 +1,130 @@
+@prefix krim:    <https://example.org/kriminalita/ontology#> .
+@prefix krimc:   <https://example.org/kriminalita/code/> .
+@prefix rec:     <https://example.org/kriminalita/record/> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# Test suite: a small, hand-made set of individuals that exercises every
+# competency question and every shape. Fictional records, realistic codes.
+# krim:stateAsOf is when the publisher reported the state we hold (the latest one).
+# Each record lists its types as the publisher does: a type plus all broader types.
+
+# Burglary of a flat in Prague, unsolved.
+rec:1001 a krim:OffenceRecord ;
+    dcterms:identifier 1001 ;
+    krim:reportDateTime "2025-01-05T22:15:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 50.081 ; krim:anonymisedLongitude 14.421 ;
+    krim:recordedByMunicipalPolice false ;
+    krim:hasClearanceState krimc:state\/2 ; krim:hasLocationRelevance krimc:relevance\/4 ;
+    krim:hasOffenceType krimc:type\/18 , krimc:type\/19 ;
+    krim:stateAsOf "2026-11-19T00:25:02"^^xsd:dateTime .
+
+# Burglary of a family house in Brno, probable offender identified.
+rec:1002 a krim:OffenceRecord ;
+    dcterms:identifier 1002 ;
+    krim:reportDateTime "2025-01-12T03:40:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 49.195 ; krim:anonymisedLongitude 16.608 ;
+    krim:recordedByMunicipalPolice false ;
+    krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
+    krim:hasOffenceType krimc:type\/18 , krimc:type\/20 ;
+    krim:stateAsOf "2026-11-19T00:25:02"^^xsd:dateTime .
+
+# Intentional bodily harm in Prague, cleared.
+rec:1003 a krim:OffenceRecord ;
+    dcterms:identifier 1003 ;
+    krim:reportDateTime "2025-01-20T14:00:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 50.072 ; krim:anonymisedLongitude 14.452 ;
+    krim:recordedByMunicipalPolice false ;
+    krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
+    krim:hasOffenceType krimc:type\/1 , krimc:type\/8 ;
+    krim:stateAsOf "2026-11-19T00:25:02"^^xsd:dateTime .
+
+# Robbery with a cold weapon in Ostrava: two categories (violent, weapons).
+rec:1004 a krim:OffenceRecord ;
+    dcterms:identifier 1004 ;
+    krim:reportDateTime "2025-01-25T21:30:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 49.835 ; krim:anonymisedLongitude 18.282 ;
+    krim:recordedByMunicipalPolice false ;
+    krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
+    krim:hasOffenceType krimc:type\/1 , krimc:type\/3 , krimc:type\/84 , krimc:type\/86 ;
+    krim:stateAsOf "2026-11-19T00:25:02"^^xsd:dateTime .
+
+# Speeding in Prague, recorded by municipal police.
+rec:1005 a krim:OffenceRecord ;
+    dcterms:identifier 1005 ;
+    krim:reportDateTime "2025-01-31T08:10:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 50.091 ; krim:anonymisedLongitude 14.401 ;
+    krim:recordedByMunicipalPolice true ;
+    krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
+    krim:hasOffenceType krimc:type\/97 , krimc:type\/74 , krimc:type\/124 ;
+    krim:stateAsOf "2026-11-19T00:25:02"^^xsd:dateTime .
+
+# Bicycle theft in Plzeň that turned out not to have happened; place of report.
+rec:1006 a krim:OffenceRecord ;
+    dcterms:identifier 1006 ;
+    krim:reportDateTime "2025-02-02T00:00:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 49.741 ; krim:anonymisedLongitude 13.373 ;
+    krim:recordedByMunicipalPolice false ;
+    krim:hasClearanceState krimc:state\/3 ; krim:hasLocationRelevance krimc:relevance\/2 ;
+    krim:hasOffenceType krimc:type\/35 , krimc:type\/42 ;
+    krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .
+
+# Burglary of a flat in Prague, unsolved.
+rec:1007 a krim:OffenceRecord ;
+    dcterms:identifier 1007 ;
+    krim:reportDateTime "2025-02-08T22:50:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 50.083 ; krim:anonymisedLongitude 14.433 ;
+    krim:recordedByMunicipalPolice false ;
+    krim:hasClearanceState krimc:state\/2 ; krim:hasLocationRelevance krimc:relevance\/4 ;
+    krim:hasOffenceType krimc:type\/18 , krimc:type\/19 ;
+    krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .
+
+# Misdemeanour against civil coexistence in Brno, municipal police.
+rec:1008 a krim:OffenceRecord ;
+    dcterms:identifier 1008 ;
+    krim:reportDateTime "2025-02-14T17:05:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 49.201 ; krim:anonymisedLongitude 16.602 ;
+    krim:recordedByMunicipalPolice true ;
+    krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
+    krim:hasOffenceType krimc:type\/97 , krimc:type\/76 , krimc:type\/111 ;
+    krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .
+
+# Other property crime in Liberec, found not to be an offence; place of consequence.
+rec:1009 a krim:OffenceRecord ;
+    dcterms:identifier 1009 ;
+    krim:reportDateTime "2025-02-15T23:20:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 50.767 ; krim:anonymisedLongitude 15.056 ;
+    krim:recordedByMunicipalPolice false ;
+    krim:hasClearanceState krimc:state\/4 ; krim:hasLocationRelevance krimc:relevance\/3 ;
+    krim:hasOffenceType krimc:type\/55 , krimc:type\/102 ;
+    krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .
+
+# Fraud with a foreign location (Vienna): expected to raise the Czechia bounding-box warning.
+rec:1010 a krim:OffenceRecord ;
+    dcterms:identifier 1010 ;
+    krim:reportDateTime "2025-02-20T10:00:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 48.208 ; krim:anonymisedLongitude 16.373 ;
+    krim:recordedByMunicipalPolice false ;
+    krim:hasClearanceState krimc:state\/2 ; krim:hasLocationRelevance krimc:relevance\/5 ;
+    krim:hasOffenceType krimc:type\/54 ;
+    krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .
+
+# Drink-driving (motor vehicle) in Prague: a three-level type path.
+rec:1011 a krim:OffenceRecord ;
+    dcterms:identifier 1011 ;
+    krim:reportDateTime "2025-02-22T19:45:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 50.102 ; krim:anonymisedLongitude 14.498 ;
+    krim:recordedByMunicipalPolice false ;
+    krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
+    krim:hasOffenceType krimc:type\/97 , krimc:type\/75 , krimc:type\/112 , krimc:type\/113 ;
+    krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .
+
+# Burglary of a flat in Ostrava, cleared, but with an erroneous location.
+rec:1012 a krim:OffenceRecord ;
+    dcterms:identifier 1012 ;
+    krim:reportDateTime "2025-02-27T22:10:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 49.842 ; krim:anonymisedLongitude 18.291 ;
+    krim:recordedByMunicipalPolice false ;
+    krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/6 ;
+    krim:hasOffenceType krimc:type\/18 , krimc:type\/19 ;
+    krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .

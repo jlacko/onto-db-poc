@@ -1,0 +1,7 @@
+# CQ02 Records under category 18 (incl. subtypes) reported 2025-02-01..2025-02-28; each record once.
+SELECT (COUNT(DISTINCT ?r) AS ?records) WHERE {
+  ?r krim:hasOffenceType ?t ; krim:reportDateTime ?dt .
+  ?t skos:broader* ktype:18 .
+  BIND(SUBSTR(STR(?dt), 1, 10) AS ?day)
+  FILTER(?day >= "2025-02-01" && ?day <= "2025-02-28")
+}

@@ -1,0 +1,13 @@
+digraph concepts {
+  graph [rankdir=LR, fontname="Noto Sans", nodesep=0.5, ranksep=1.1];
+  node [shape=box, style="rounded,filled", fillcolor="#eef2f5", color="#36444e", fontname="Noto Sans", fontsize=11];
+  edge [color="#36444e", fontname="Noto Sans", fontsize=9];
+  offence_record [label="záznam o deliktu\n\nidentifikátor záznamu\ldatum a čas oznámení\lanonymizovaná zeměpisná šířka\lanonymizovaná zeměpisná délka\levidováno městskou policií\lstav ke dni\l", fillcolor="#dbe6ee"];
+  offence_type [label="třída deliktu"];
+  clearance_state [label="stav objasnění"];
+  location_relevance [label="relevance lokality"];
+  offence_record -> clearance_state [label="stav objasnění (1..1)"];
+  offence_record -> location_relevance [label="relevance lokality (1..1)"];
+  offence_record -> offence_type [label="třída deliktu (1..*)"];
+  offence_type -> offence_type [label="nadřazená třída (0..1)"];
+}

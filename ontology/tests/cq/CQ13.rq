@@ -1,0 +1,8 @@
+# CQ13 Records spanning two or more categories: one row per record and category.
+SELECT DISTINCT ?record ?category WHERE {
+  ?r dcterms:identifier ?record ; krim:hasOffenceType/skos:broader* ?cat .
+  ?cat skos:topConceptOf krimc:type ; skos:notation ?category .
+  ?r krim:hasOffenceType/skos:broader* ?cat2 .
+  ?cat2 skos:topConceptOf krimc:type .
+  FILTER(?cat2 != ?cat)
+}

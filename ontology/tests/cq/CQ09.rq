@@ -1,0 +1,5 @@
+# CQ09 Hour of day (local, as published) for type 19.
+SELECT ?hour (COUNT(?r) AS ?records) WHERE {
+  ?r krim:hasOffenceType ktype:19 ; krim:reportDateTime ?dt .
+  BIND(HOURS(?dt) AS ?hour)
+} GROUP BY ?hour

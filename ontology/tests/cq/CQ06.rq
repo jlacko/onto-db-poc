@@ -1,0 +1,6 @@
+# CQ06 Misdemeanours (a type under 97) versus other records, per calendar month of report.
+SELECT ?month (SUM(?mis) AS ?misdemeanours) (SUM(1 - ?mis) AS ?other) WHERE {
+  ?r a krim:OffenceRecord ; krim:reportDateTime ?dt .
+  BIND(SUBSTR(STR(?dt), 1, 7) AS ?month)
+  BIND(IF(EXISTS { ?r krim:hasOffenceType/skos:broader* ktype:97 }, 1, 0) AS ?mis)
+} GROUP BY ?month

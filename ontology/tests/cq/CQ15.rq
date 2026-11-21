@@ -1,0 +1,5 @@
+# CQ15 Records with a foreign (5) or erroneous (6) location.
+SELECT ?record WHERE {
+  ?r dcterms:identifier ?record ; krim:hasLocationRelevance ?rel .
+  FILTER(?rel IN (krel:5, krel:6))
+}

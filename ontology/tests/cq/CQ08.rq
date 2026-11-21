@@ -1,0 +1,4 @@
+# CQ08 Records per location relevance.
+SELECT ?relevance (COUNT(?r) AS ?records) WHERE {
+  ?r a krim:OffenceRecord ; krim:hasLocationRelevance/skos:notation ?relevance .
+} GROUP BY ?relevance

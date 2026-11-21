@@ -1,0 +1,329 @@
+# Competency questions: the specification
+
+This file is the spec of the Kriminalita ontology, and it is executable.
+`scripts/validate.py` reads every ` ```expected ` block below and compares it
+with the result of the matching SPARQL query (`ontology/tests/cq/CQnn.rq`, run on
+the sample RDF) and SQL query (`CQnn.sql`, run on a SQLite database generated
+from the same sample). So each question is answered three ways: **by you, by
+the ontology, by the database**. A disagreement points to a gap in the
+ontology, a bug in a query, or a question that was not precise enough.
+
+## How to work with this file
+
+1. Open the sample data: [`tests/sample-data.md`](tests/sample-data.md)
+   (12 records; generated from `tests/sample-data.ttl`, so don't edit it).
+2. For each question marked **✍ your answer**, work the answer out by hand
+   from the sample table and replace `TODO` in its `expected` block.
+3. Read the *Decision* line. If you disagree with the proposed modelling
+   decision, rewrite it. The decision is part of the spec, and the queries must
+   follow it.
+4. Run `.venv/bin/python scripts/validate.py`. Your answer either passes, or
+   it shows you where you, the ontology or the database disagree.
+
+Format of an `expected` block: a header row, then one row per result, columns
+separated by `|`. Row order does not matter. Decimals are compared to 3 places.
+`TODO` anywhere in the block marks the question as pending.
+
+Terms: a *record* is one offence record, one per occurrence; a *category* is a
+top-level offence type (no broader type). Time means **report time**
+(`krim:reportDateTime`, local date as published), and periods (a month, a date
+range, a year) are parameters of a question, not stored concepts. The
+publisher's monthly download files are pagination and appear in no question.
+
+---
+
+## A. Counting and classification
+
+### CQ01: Records per month of report
+**Question.** How many offence records were reported in each calendar month?
+**Decision.** Counted by the local date of `krim:reportDateTime`; the month is
+just one choice of period (see CQ02 for an arbitrary date range).
+
+```expected
+month | records
+2025-01 | 5
+2025-02 | 7
+```
+
+### CQ02: Records in a category, including subtypes ✍ your answer
+**Question.** How many records reported between 2025-02-01 and 2025-02-28
+(inclusive) fall under category *Burglary* (code 18), including all its subtypes?
+**Decision.** A record counts once, even when it is tagged with several types of
+the category.
+**Hint.** Look at the `types` column; the hierarchy is in the codelist
+(`ontology/reference/types.ttl`, `skos:broader`).
+
+```expected
+records
+TODO
+```
+
+### CQ03: Clearance rate per category ✍ your answer
+**Question.** For each category present in the sample, how many records are
+there, how many have a probable offender identified (clearance state 1), and
+what is the clearance rate?
+**Decision (proposed, please review).** Records concluded as "act did not
+occur" (state 3) or "act is not an offence" (state 4) are **excluded from the
+denominator**: they are not offences that could be cleared. Rate =
+cleared / remaining records.
+**Your notes on the decision:** _…_
+
+```expected
+category | records | cleared | rate
+TODO
+```
+
+### CQ04: Subtypes of a category
+**Question.** Which offence types are direct or indirect subtypes of
+category *Violent crime* (code 1)?
+**Decision.** Answered from reference data alone (no records needed).
+
+```expected
+type
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+98
+```
+
+### CQ05: Records per clearance state
+**Question.** How many records are in each clearance state?
+
+```expected
+state | records
+1 | 7
+2 | 3
+3 | 1
+4 | 1
+```
+
+### CQ06: Misdemeanours versus the rest ✍ your answer
+**Question.** For each calendar month of report, how many records are
+misdemeanours and how many are not?
+**Decision (proposed, please review).** A record is a misdemeanour when at
+least one of its types is *Misdemeanours* (code 97) or falls under it. All other
+records (crimes, but also fires and traffic accidents) are "other".
+**Your notes on the decision:** _…_
+
+```expected
+month | misdemeanours | other
+TODO
+```
+
+### CQ12: Most frequent most-specific types ✍ your answer
+**Question.** Among records reported in February 2025, how many carry each
+*most-specific* offence type?
+**Decision.** A type is most-specific for a record when the record carries no
+narrower type of it. (Records carry their types together with all broader
+types, so e.g. `18, 19` means "Burglary – flat"; only 19 counts here.)
+
+```expected
+type | records
+TODO
+```
+
+### CQ13: Records spanning two categories ✍ your answer
+**Question.** Which records combine offence types from two or more different
+categories, and which categories?
+**Decision.** Categories are the top-level ancestors of a record's types.
+Write one row per record and category.
+
+```expected
+record | category
+TODO
+```
+
+## B. Place and time
+
+### CQ07: Records in a bounding box
+**Question.** Which records lie inside the box 50.0–50.2° N, 14.2–14.7° E
+(roughly Prague)?
+**Decision.** Uses the anonymised coordinates; the box is inclusive.
+
+```expected
+record
+1001
+1003
+1005
+1007
+1011
+```
+
+### CQ08: What the location stands for
+**Question.** For how many records does the location mean place of commission,
+place of report, etc.?
+
+```expected
+relevance | records
+2 | 1
+3 | 1
+4 | 8
+5 | 1
+6 | 1
+```
+
+### CQ09: Hour of day
+**Question.** How are records of type *Burglary – flat* (code 19) distributed
+over the hours of the day?
+**Decision.** Local time as published (the hour in the timestamp, not UTC). Note
+that the timestamp is the time of *report* (see open question 2), so this is a
+"when do people report flat burglaries" profile, not a "when do they happen" profile.
+
+```expected
+hour | records
+22 | 3
+```
+
+### CQ15: Doubtful locations
+**Question.** Which records have a location flagged as foreign (5) or
+erroneous (6)?
+
+```expected
+record
+1010
+1012
+```
+
+### CQ16: Day of week
+**Question.** How are records of category *Burglary* (code 18) distributed over
+the days of the week (ISO: 1 = Monday … 7 = Sunday)?
+**Decision.** SQL only. SPARQL 1.1 has no day-of-week function. Weekday is
+derived data, so the ontology does not store it, and the database answers it
+with `strftime('%u', …)`. This is a legitimate limit of the RDF test layer, not
+a gap in the ontology.
+
+```expected
+weekday | records
+7 | 2
+6 | 1
+4 | 1
+```
+
+## C. Provenance and vocabulary
+
+### CQ10: Municipal police share
+**Question.** What share of records was recorded by the municipal police?
+
+```expected
+records | municipal | share
+12 | 2 | 0.167
+```
+
+### CQ11: As of when
+**Question.** As of when is the state of record 1003 known, and as of when is
+the whole dataset?
+**Decision.** Only the latest observed state of a record is kept. A record's
+`krim:stateAsOf` is when the publisher reported that state; the dataset is as of
+the latest such moment. In the database the loader also records the time of the
+latest load run (technical table `load_run`).
+
+```expected
+record_as_of | dataset_as_of
+2026-11-19T00:25:02 | 2026-11-19T00:27:18
+```
+
+### CQ14: What does a code mean
+**Question.** What are the Czech and English labels and the definition of
+clearance state 2?
+
+```expected
+code | label_cs | label_en | definition
+2 | neobjasněno | unsolved | A clearance state in which no offender of the recorded act has been identified.
+```
+
+## D. Identity and continuity of the history
+
+### CQ18: No duplicates
+**Question.** Is any occurrence recorded more than once (the same record
+identifier on two records)?
+**Decision.** One occurrence is one record, whichever download file and refresh
+it came from. When the publisher reports a record again (e.g. first as unsolved,
+later as cleared), the later report *replaces* the earlier one. The expected
+answer is an empty result. The loader test (`validate.py`, section 7) feeds the
+same record in two observations, in both orders, and expects one row in the
+later state.
+
+```expected
+record | occurrences
+```
+
+### CQ19: Holes in the history
+**Question.** Which days between 2025-01-01 and 2025-01-07 have no reported
+records?
+**Decision.** SQL only (SPARQL cannot generate a calendar). On real data a
+missing day points to a download that failed, not to a crime-free day; the
+loader runs the same check over the whole year.
+
+```expected
+day
+2025-01-01
+2025-01-02
+2025-01-03
+2025-01-04
+2025-01-06
+2025-01-07
+```
+
+---
+
+## E. Known gaps (questions the ontology deliberately does not answer)
+
+### CQ17: Municipality
+**Question.** In which municipality or district did a record occur?
+**Status.** Gap. The national extracts carry anonymised coordinates only. The
+publisher offers per-municipality extracts (API parameter `municipality`, RÚIAN
+code), but loading them, or joining points spatially to RÚIAN polygons, is out
+of scope for this proof of concept. Closing the gap would add a class
+`krim:Municipality` (reference data from RÚIAN) and an optional property
+`krim:inMunicipality`: a minor release.
+
+## F. Open questions for the domain expert ✍
+
+These come from building the ontology. The answers go into definitions and
+scope notes, and some may change the shapes. Where the publisher's
+documentation gave an answer, it is quoted as a *Finding*. Confirm it or
+overrule it.
+
+1. **What does the source field `mp` mean?**
+   *Finding:* the publisher's OpenAPI description (`/api/v2/docs.json`) splits
+   statistics into `sp` (state police) and `mp` (municipal police), and the help
+   pages say municipal-police offences are being integrated through a dedicated
+   interface. Modelled as `krim:recordedByMunicipalPolice`; the field itself is
+   still not described verbatim.
+   *Your answer:* _…_
+2. **What does the record timestamp mean: time of commission, or time of
+   report?**
+   *Finding:* the help pages (napoveda, "Filtrování dle období") filter by
+   *datum ohlášení*: an act reported on one day but entered the next day shows
+   under the next day. So it is the time of report or registration. The property
+   was renamed `krim:reportDateTime` before the first release. Open: is 00:00 a
+   placeholder for an unknown time?
+   *Your answer:* _…_
+3. **From which year are the data trustworthy?** The help pages say location
+   data exist from about mid-2013, and the R project filtered out data before
+   2016. Should the ontology record this, as a scope note on
+   `krim:MonthlyExtract` or as a quality flag?
+   *Your answer:* _…_
+4. **Do fires, explosions and traffic accidents belong in the ontology as
+   offence types?** The publisher lists them in the same classification, and
+   for now the ontology follows the publisher.
+   *Your answer:* _…_
+5. **Should the ontology model "crime vs misdemeanour" (trestný čin / přestupek)
+   explicitly?** The public map shows this per record ("typ deliktu"), but the
+   extract has no such field. CQ06 derives it from the type hierarchy (under 97 =
+   misdemeanour). A class `krim:Misdemeanour`, defined by that rule, would make
+   it explicit.
+   *Your answer:* _…_
+6. **Publisher documentation error.** The OpenAPI description labels `x` as
+   latitude and `y` as longitude; the data show the opposite (x ≈ 14, y ≈ 50).
+   The ontology follows the data (`kdb:sourceField` on the shapes). Worth
+   reporting to the publisher?
+   *Your answer:* _…_

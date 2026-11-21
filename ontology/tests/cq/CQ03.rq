@@ -1,0 +1,9 @@
+# CQ03 Clearance rate per category; states 3 and 4 excluded from the denominator.
+SELECT ?category (COUNT(DISTINCT ?r) AS ?records) (COUNT(DISTINCT ?c) AS ?cleared)
+       (COUNT(DISTINCT ?c) / COUNT(DISTINCT ?r) AS ?rate) WHERE {
+  ?r krim:hasOffenceType ?t ; krim:hasClearanceState ?s .
+  ?t skos:broader* ?cat .
+  ?cat skos:topConceptOf krimc:type ; skos:notation ?category .
+  FILTER(?s NOT IN (kstate:3, kstate:4))
+  BIND(IF(?s = kstate:1, ?r, 1/0) AS ?c)   # error -> unbound when not cleared
+} GROUP BY ?category

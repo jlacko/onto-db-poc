@@ -1,0 +1,4 @@
+# CQ18 Record identifiers used by more than one record (expected: none).
+SELECT ?record (COUNT(?r) AS ?occurrences) WHERE {
+  ?r a krim:OffenceRecord ; dcterms:identifier ?record .
+} GROUP BY ?record HAVING (COUNT(?r) > 1)
