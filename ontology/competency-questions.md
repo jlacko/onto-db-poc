@@ -130,8 +130,9 @@ but also fires and traffic accidents (open question 4).
 
 ```expected
 month | misdemeanours | other | both
-2025-01 | 1 | 5 | 0 
-2025-02 | 2 | 7 | 2
+2025-01 | 1 | 4 | 0 
+2025-02 | 2 | 5 | 0
+2025-03 | 0 | 0 | 1
 ```
 
 ### CQ12: Most frequent most-specific types ✍ your answer

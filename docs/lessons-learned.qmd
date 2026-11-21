@@ -136,6 +136,8 @@ side has been wrong at least once:
 | CQ03 | expert listed two categories the queries omitted | the question: silent about categories whose records are all excluded | decision made explicit |
 | CQ03 | a rate written `.5` failed | the validator: did not parse `.5` | tool fixed (also accepts `0,5`) |
 | CQ06 | totals did not add up | the question: assumed crime and misdemeanour are exclusive | model decision, third group, new sample record |
+| CQ06 | one record counted in all three groups | the question's wording: "exclusive groups" vs "overlapping counts" both plausible | reading made explicit; self-check "groups add up to the month's total" |
+| CQ06 | misdemeanours counted as *both* | the data presentation: the `types` column lists subgroups of 97 that look like other codes | answer corrected using the `categories` column |
 
 : Disagreements while answering by hand {tbl-colwidths="[8,30,32,30]"}
 
