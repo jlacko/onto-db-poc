@@ -398,6 +398,21 @@ def hand_hint(header: list[str], want: list[tuple], got: list[tuple]) -> str:
     no_sep = [r[0] for r in want if width > 1 and len(r) == 1]
     if no_sep:
         lines.append(f"rows without the '|' separator (the format requires it): {', '.join(no_sep)}")
+    got_keys = [r[0] for r in got]
+    if width > 1 and len(set(got_keys)) < len(got_keys):
+        # Several rows per key (e.g. one row per record and category): compare whole rows.
+        ok = [r for r in want if r in got]
+        wrong = [" | ".join(r) for r in want if r not in got]
+        if ok:
+            lines.append(f"rows of yours that are in the result: {len(ok)}")
+        if wrong:
+            lines.append(f"rows of yours that are not in the result: {'; '.join(wrong)}")
+        missing = len([r for r in got if r not in want])
+        if missing:
+            lines.append(f"the result has {missing} row(s) your answer does not have "
+                         f"(several rows may share the same {header[0]})")
+        lines.append(f"rows: yours {len(want)}, result {len(got)}")
+        return "\n".join("      " + l for l in lines)
     keys = [r[0] for r in want]
     dup = sorted({k for k in keys if keys.count(k) > 1})
     if dup and width > 1:
