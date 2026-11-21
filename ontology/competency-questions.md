@@ -59,7 +59,7 @@ gives each type's broader type and category.
 
 ```expected
 records
-TODO
+2
 ```
 
 ### CQ03: Clearance rate per category ✍ your answer

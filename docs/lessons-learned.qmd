@@ -125,6 +125,25 @@ changes no answer the expert had already given (state 4 keeps it out of the
 clearance rate; March keeps it out of the February questions). Every decision
 recorded in a question needs at least one sample record that exercises it.
 
+*The human validator is fallible too.* The three-way check (expert by hand,
+SPARQL, SQL) does not presume who is right. A disagreement only says that
+someone is wrong, and resolving it means re-reading the question. So far every
+side has been wrong at least once:
+
+| CQ | Disagreement | Who was wrong | Resolution |
+|---|---|---|---|
+| CQ02 | hand count higher than the queries | the expert: missed the February filter | answer corrected |
+| CQ03 | expert listed two categories the queries omitted | the question: silent about categories whose records are all excluded | decision made explicit |
+| CQ03 | a rate written `.5` failed | the validator: did not parse `.5` | tool fixed (also accepts `0,5`) |
+| CQ06 | totals did not add up | the question: assumed crime and misdemeanour are exclusive | model decision, third group, new sample record |
+
+: Disagreements while answering by hand {tbl-colwidths="[8,30,32,30]"}
+
+A method that treats the expert as an oracle would have "fixed" the queries to
+match the CQ02 slip; one that treats the queries as the oracle would have
+missed both CQ03 and CQ06 problems. The value lies in the disagreement, not in
+any single answer.
+
 *The validator must not leak the answer.* On the expert's first partial answer,
 the validator printed the queries' full result on failure, which gave away the
 columns not yet worked out. An expected answer is only independent if the
