@@ -416,6 +416,10 @@ def hand_hint(header: list[str], want: list[tuple], got: list[tuple]) -> str:
     missing = len({r[0] for r in got} - {r[0] for r in want})
     if missing:
         lines.append(f"the result has {missing} row(s) your answer does not have")
+    if want and got and not ({r[0] for r in want} & {r[0] for r in got}):
+        # No key in common: show the format of the result's keys, never their values.
+        shapes = sorted({re.sub(r"[A-Za-z]", "a", re.sub(r"\d", "9", r[0])) for r in got})
+        lines.append(f"no row key in common; the result's {header[0]} values look like: {', '.join(shapes)}")
     lines.append(f"rows: yours {len(want)}, result {len(got)}")
     return "\n".join("      " + l for l in lines)
 
