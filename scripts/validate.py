@@ -355,7 +355,9 @@ def parse_cq_spec() -> dict[str, dict]:
         lines = [l.strip() for l in block.group(1).strip().splitlines() if l.strip()]
         pending = any("TODO" in l for l in lines)
         header = [h.strip() for h in lines[0].split("|")]
-        rows = [] if pending else [[c.strip() for c in l.split("|")] for l in lines[1:]]
+        # Cells are separated by "|"; a row typed with spaces or tabs only is accepted too.
+        split = lambda l: [c.strip() for c in l.split("|")] if "|" in l else l.split()
+        rows = [] if pending else [split(l) for l in lines[1:]]
         spec[cq] = {"expected": rows, "header": header, "pending": pending, "hand": hand}
     return spec
 
@@ -394,6 +396,10 @@ def hand_hint(header: list[str], want: list[tuple], got: list[tuple]) -> str:
     it never prints a computed value other than the row keys you already wrote.
     """
     lines, width = [], len(header)
+    keys = [r[0] for r in want]
+    dup = sorted({k for k in keys if keys.count(k) > 1})
+    if dup and width > 1:
+        lines.append(f"{header[0]} repeated on several rows (one row per {header[0]}, with the total): {', '.join(dup)}")
     if width == 1:  # a single value or a plain list: there is no key to line rows up by
         extra = sorted({r[0] for r in want} - {r[0] for r in got})
         missing = len({r[0] for r in got} - {r[0] for r in want})
