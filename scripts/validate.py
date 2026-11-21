@@ -306,10 +306,11 @@ def check_ddl(rep: Report):
             "db/schema.sql is up to date with ontology/shapes.ttl" if current == fresh
             else "db/schema.sql is stale: run scripts/generate_ddl.py")
     import render_sample
-    md = TESTS / "sample-data.md"
-    ok = md.exists() and md.read_text(encoding="utf-8") == render_sample.render()
-    rep.add("PASS" if ok else "FAIL", "ontology/tests/sample-data.md is up to date" if ok
-            else "ontology/tests/sample-data.md is stale: run scripts/render_sample.py")
+    for path, text in render_sample.render().items():
+        ok = path.exists() and path.read_text(encoding="utf-8") == text
+        rel = path.relative_to(ONTO.parent)
+        rep.add("PASS" if ok else "FAIL", f"{rel} is up to date" if ok
+                else f"{rel} is stale: run scripts/render_sample.py")
     import generate_glossary
     for path, text in generate_glossary.outputs()[1].items():
         ok = path.exists() and path.read_text(encoding="utf-8") == text

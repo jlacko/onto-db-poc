@@ -78,7 +78,7 @@ extensions proved valuable:
   text.
 - **Expected answers live in the spec, written by the human.** The
   `expected` blocks in the Markdown are parsed by the validator. Key questions
-  are left for the domain expert to answer by hand from a readable sample table.
+  are left for the domain expert to answer by hand from the sample data (CSV, in a spreadsheet).
   Answering by hand is the fastest way to discover that a question is
   ambiguous.
 

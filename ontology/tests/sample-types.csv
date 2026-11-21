@@ -1,0 +1,22 @@
+type,label_en,label_cs,broader,category_code,category,is_category
+1,Violent crime,Násilná trestná činnost,,1,Violent crime,yes
+3,Robbery,Loupež,1,1,Violent crime,no
+8,Intentional bodily harm,Úmyslné ublížení na zdraví,1,1,Violent crime,no
+18,Burglary,Krádeže vloupáním,,18,Burglary,yes
+19,Burglary – flat,Byt,18,18,Burglary,no
+20,Burglary – family house,Rodinný domek,18,18,Burglary,no
+35,Theft,Krádeže,,35,Theft,yes
+42,Bicycle theft,Krádeže jízdních kol,35,35,Theft,no
+54,Fraud,Podvody,,54,Fraud,yes
+55,Other property crime,Ostatní majetková trestná činnost,,55,Other property crime,yes
+74,Misdemeanours – road safety and road management,Na úseku BESIP a silničního hospodářství,97,97,Misdemeanours,no
+75,Misdemeanours – alcoholism and drug addiction,Na úseku ochrany před alkoholismem toxikomanií,97,97,Misdemeanours,no
+76,Misdemeanours – public order and civil coexistence,Proti veřejnému pořádku a občanskému soužití,97,97,Misdemeanours,no
+84,Weapons crime,Trestná činnost se zbraní,,84,Weapons crime,yes
+86,"Cold weapon (stabbing, cutting, blunt)",Chladná zbraň (bodná sečná úderná),84,84,Weapons crime,no
+97,Misdemeanours,Přestupky,,97,Misdemeanours,yes
+102,Other property crime – no subclass,Jiná majetková bez podtřídy,55,55,Other property crime,no
+111,Misdemeanours – against civil coexistence,Proti občanskému soužití,76,97,Misdemeanours,no
+112,Misdemeanours – alcohol – driver,Alkohol řidič,75,97,Misdemeanours,no
+113,Misdemeanours – alcohol – motor vehicle driver,Alkohol řidič mot. vozidel,112,97,Misdemeanours,no
+124,Misdemeanours – speeding,Rychlost,74,97,Misdemeanours,no

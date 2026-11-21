@@ -10,8 +10,11 @@ ontology, a bug in a query, or a question that was not precise enough.
 
 ## How to work with this file
 
-1. Open the sample data: [`tests/sample-data.md`](tests/sample-data.md)
-   (12 records; generated from `tests/sample-data.ttl`, so don't edit it).
+1. Open the sample data in a spreadsheet: [`tests/sample-records.csv`](tests/sample-records.csv)
+   (12 records) and [`tests/sample-types.csv`](tests/sample-types.csv) (the offence
+   types used, with broader type and category). Both are generated from
+   `tests/sample-data.ttl`, so don't edit them. UTF-8, comma-separated, dot
+   decimals; a record's types are separated by spaces.
 2. For each question marked **✍ your answer**, work the answer out by hand
    from the sample table and replace `TODO` in its `expected` block.
 3. Read the *Decision* line. If you disagree with the proposed modelling
@@ -50,8 +53,8 @@ month | records
 (inclusive) fall under category *Burglary* (code 18), including all its subtypes?
 **Decision.** A record counts once, even when it is tagged with several types of
 the category.
-**Hint.** Look at the `types` column; the hierarchy is in the codelist
-(`ontology/reference/types.ttl`, `skos:broader`).
+**Hint.** Look at the `types` column of `sample-records.csv`; `sample-types.csv`
+gives each type's broader type and category.
 
 ```expected
 records

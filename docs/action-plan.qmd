@@ -138,8 +138,8 @@ Each question has:
 The questions are an **executable spec**: `validate.py` parses the `expected`
 blocks and compares them with the SPARQL and SQL results. Five key questions
 (CQ02, CQ03, CQ06, CQ12, CQ13) are deliberately left `TODO` for the domain
-expert to answer by hand from the readable sample table
-(`ontology/tests/sample-data.md`). Until answered, they show as *pending*. This
+expert to answer by hand from the sample data
+(`ontology/tests/sample-records.csv` and `sample-types.csv`, for a spreadsheet). Until answered, they show as *pending*. This
 is the main **manual learning step**: answering a question by hand reveals
 whether it is precise enough.
 
@@ -262,7 +262,7 @@ type. These are conventions of the source, not rules of the domain.
 | File | Content |
 |---|---|
 | `tests/sample-data.ttl` | 12 fictional records covering every CQ and shape, including one deliberate warning |
-| `tests/sample-data.md` | the same data as a readable table (generated) |
+| `tests/sample-records.csv`, `sample-types.csv` | the same data as CSV for a spreadsheet (generated) |
 | `tests/invalid-data.ttl` | 7 individuals, each breaking exactly one rule, annotated `# expect: <property>` |
 | `tests/cq/CQnn.rq`, `CQnn.sql` | each competency question in SPARQL and SQL (CQ16 SQL only) |
 
@@ -280,7 +280,7 @@ type. These are conventions of the source, not rules of the domain.
 | 2. Reasoner | HermiT finds ontology + reference + sample data consistent, *and* finds a contradictory individual inconsistent (negative test) |
 | 3. Lint | every term has en/cs labels, one definition, a status; no `rdfs:domain`/`range`; no duplicate labels; every `krim:` term used in shapes, samples and queries is declared; every property shape has a plain-language rule |
 | 4. SHACL | sample data conforms; exactly the expected warning is raised; each negative test fails *for the stated reason* |
-| 5. Generated artifacts | `db/schema.sql` and `sample-data.md` are current; the sample loads into the schema with no FK errors |
+| 5. Generated artifacts | `db/schema.sql`, the dictionary, the glossary and the sample CSVs are current; the sample loads into the schema with no FK errors |
 | 6. Competency questions | SPARQL = SQL (parity), and both = the expected answer written in the spec |
 
 : The validation loop {tbl-colwidths="[25,75]"}
