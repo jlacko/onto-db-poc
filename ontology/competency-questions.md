@@ -46,6 +46,7 @@ just one choice of period (see CQ02 for an arbitrary date range).
 month | records
 2025-01 | 5
 2025-02 | 7
+2025-03 | 1
 ```
 
 ### CQ02: Records in a category, including subtypes ✍ your answer
@@ -68,12 +69,19 @@ what is the clearance rate?
 **Decision (proposed, please review).** Records concluded as "act did not
 occur" (state 3) or "act is not an offence" (state 4) are **excluded from the
 denominator**: they are not offences that could be cleared. Rate =
-cleared / remaining records.
+cleared / remaining records. Categories with no remaining records (all of
+their records excluded as state 3 or 4) are **omitted**: with nothing to
+clear they have no rate, and a rate of 0 would misread as a failure to clear.
 **Your notes on the decision:** _…_
 
 ```expected
 category | records | cleared | rate
-TODO
+18 |	4 | 2 | .5
+1 |	2 | 2 | 1
+97 |	3 | 3 |1
+54 |	1 | 0 | 0
+84 |	1 | 1 | 1
+
 ```
 
 ### CQ04: Subtypes of a category
@@ -105,20 +113,25 @@ state | records
 1 | 7
 2 | 3
 3 | 1
-4 | 1
+4 | 2
 ```
 
 ### CQ06: Misdemeanours versus the rest ✍ your answer
 **Question.** For each calendar month of report, how many records are
-misdemeanours and how many are not?
-**Decision (proposed, please review).** A record is a misdemeanour when at
-least one of its types is *Misdemeanours* (code 97) or falls under it. All other
-records (crimes, but also fires and traffic accidents) are "other".
+misdemeanours only, how many are not misdemeanours, and how many are both?
+**Decision.** Crime and misdemeanour are **not exclusive**: one record may be
+both (domain expert's decision). A record "is a misdemeanour" when at least one
+of its categories is *Misdemeanours* (code 97), and "is other" when at least one
+of its categories is not 97. Each record falls into exactly one group:
+*misdemeanours* (only 97), *other* (no 97), *both* (97 and another category).
+The three groups add up to the month's total (CQ01). "Other" includes crimes
+but also fires and traffic accidents (open question 4).
 **Your notes on the decision:** _…_
 
 ```expected
-month | misdemeanours | other
-TODO
+month | misdemeanours | other | both
+2025-01 | 1 | 5 | 0 
+2025-02 | 2 | 7 | 2
 ```
 
 ### CQ12: Most frequent most-specific types ✍ your answer
@@ -168,7 +181,7 @@ place of report, etc.?
 relevance | records
 2 | 1
 3 | 1
-4 | 8
+4 | 9
 5 | 1
 6 | 1
 ```
@@ -217,7 +230,7 @@ weekday | records
 
 ```expected
 records | municipal | share
-12 | 2 | 0.167
+13 | 2 | 0.154
 ```
 
 ### CQ11: As of when

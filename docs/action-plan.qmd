@@ -261,7 +261,7 @@ type. These are conventions of the source, not rules of the domain.
 
 | File | Content |
 |---|---|
-| `tests/sample-data.ttl` | 12 fictional records covering every CQ and shape, including one deliberate warning |
+| `tests/sample-data.ttl` | 13 fictional records covering every CQ and shape (including a record that is both crime and misdemeanour), and one deliberate warning |
 | `tests/sample-records.csv`, `sample-types.csv` | the same data as CSV for a spreadsheet (generated) |
 | `tests/invalid-data.ttl` | 7 individuals, each breaking exactly one rule, annotated `# expect: <property>` |
 | `tests/cq/CQnn.rq`, `CQnn.sql` | each competency question in SPARQL and SQL (CQ16 SQL only) |

@@ -16,7 +16,7 @@ populated with a continuous, duplicate-free history of Czech crime records from 
 | Reference data | [`ontology/reference/`](ontology/reference/): SKOS schemes generated from the publisher's JSON-LD codelists plus hand-kept English labels |
 | Closed-world rules | [`ontology/shapes.ttl`](ontology/shapes.ttl): SHACL, every rule also stated as a plain sentence |
 | Validation loop | [`scripts/validate.py`](scripts/validate.py): parse, HermiT, lint, SHACL (+ negative tests), artifact drift, CQ tests |
-| Test suite | [`ontology/tests/`](ontology/tests/): 12 sample records, 7 invalid individuals, 16 CQs in SPARQL and SQL |
+| Test suite | [`ontology/tests/`](ontology/tests/): 13 sample records, 7 invalid individuals, 19 CQs in SPARQL and SQL |
 | Data model (part III) | [`db/schema.sql`](db/schema.sql), **generated** from the shapes |
 | Data dictionary | **generated** from ontology + shapes: `meta_column` table, [`db/data-dictionary.csv`](db/data-dictionary.csv), [`db/data-dictionary.xlsx`](db/data-dictionary.xlsx) (for review), [`docs/data-dictionary.pdf`](docs/data-dictionary.pdf) |
 | Business glossary (Czech) | **generated** from Czech annotations on the ontology: [`docs/glossary.pdf`](docs/glossary.pdf) ("Slovník pojmů"; English internals, Czech business translations) |

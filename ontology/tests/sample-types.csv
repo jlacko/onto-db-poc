@@ -9,6 +9,8 @@ type,label_en,label_cs,broader,category_code,category,is_category
 42,Bicycle theft,Krádeže jízdních kol,35,35,Theft,no
 54,Fraud,Podvody,,54,Fraud,yes
 55,Other property crime,Ostatní majetková trestná činnost,,55,Other property crime,yes
+63,Generally dangerous crime,Obecně nebezpečná trestná činnost,,63,Generally dangerous crime,yes
+72,Violation of home freedom,Porušování domovní svobody,63,63,Generally dangerous crime,no
 74,Misdemeanours – road safety and road management,Na úseku BESIP a silničního hospodářství,97,97,Misdemeanours,no
 75,Misdemeanours – alcoholism and drug addiction,Na úseku ochrany před alkoholismem toxikomanií,97,97,Misdemeanours,no
 76,Misdemeanours – public order and civil coexistence,Proti veřejnému pořádku a občanskému soužití,97,97,Misdemeanours,no

@@ -11,3 +11,4 @@ record,report_date,report_time,report_month,latitude,longitude,municipal_police,
 1010,2025-02-20,10:00,2025-02,48.208,16.373,no,2,unsolved,5,foreign location,54,54,2026-11-19T00:27:18
 1011,2025-02-22,19:45,2025-02,50.102,14.498,no,1,probable offender identified,4,place of commission,75 97 112 113,97,2026-11-19T00:27:18
 1012,2025-02-27,22:10,2025-02,49.842,18.291,no,1,probable offender identified,6,erroneous location,18 19,18,2026-11-19T00:27:18
+1013,2025-03-04,18:30,2025-03,49.594,17.251,no,4,act is not an offence,4,place of commission,63 72 76 97 111,63 97,2026-11-19T00:25:02

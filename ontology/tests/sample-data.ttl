@@ -128,3 +128,16 @@ rec:1012 a krim:OffenceRecord ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/6 ;
     krim:hasOffenceType krimc:type\/18 , krimc:type\/19 ;
     krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .
+
+# Neighbour dispute in Olomouc: both a crime type (violation of home freedom) and a
+# misdemeanour (civil coexistence). Crime and misdemeanour are not exclusive (CQ06).
+# State 4 (not a crime) keeps it out of the CQ03 clearance rate; March keeps it out
+# of the February questions.
+rec:1013 a krim:OffenceRecord ;
+    dcterms:identifier 1013 ;
+    krim:reportDateTime "2025-03-04T18:30:00+01:00"^^xsd:dateTime ;
+    krim:anonymisedLatitude 49.594 ; krim:anonymisedLongitude 17.251 ;
+    krim:recordedByMunicipalPolice false ;
+    krim:hasClearanceState krimc:state\/4 ; krim:hasLocationRelevance krimc:relevance\/4 ;
+    krim:hasOffenceType krimc:type\/63 , krimc:type\/72 , krimc:type\/97 , krimc:type\/76 , krimc:type\/111 ;
+    krim:stateAsOf "2026-11-19T00:25:02"^^xsd:dateTime .

@@ -113,6 +113,18 @@ than insight. The most-specific type (CQ12) is still left to the reader. Where
 to draw that line is itself a design choice of the worksheet: pre-compute the
 mechanics, leave the judgements.
 
+*A decision needs a test case.* Answering CQ06 by hand ("misdemeanours versus
+the rest"), the expert found the totals did not simply add up and asked whether
+crime and misdemeanour are exclusive. They are not: one record may carry both
+kinds of type. The question gained a third group (*both*), and the decision went
+into the spec and into the open questions (a future misdemeanour class must not
+be declared disjoint from crime). The sample, however, had no record of both
+kinds, so the new column would always be 0 and the test could not tell a right
+rule from a wrong one. A record of both kinds was added, chosen so that it
+changes no answer the expert had already given (state 4 keeps it out of the
+clearance rate; March keeps it out of the February questions). Every decision
+recorded in a question needs at least one sample record that exercises it.
+
 *The validator must not leak the answer.* On the expert's first partial answer,
 the validator printed the queries' full result on failure, which gave away the
 columns not yet worked out. An expected answer is only independent if the
@@ -195,6 +207,7 @@ SPARQL tests.
 | 9 | the publisher's monthly pagination was modelled as a domain concept; questions grouped by it | **human**, reading the competency questions |
 | 10 | a uniqueness rule between two nodes flags *both*; the negative-test harness first reported the partner as unexpected | negative test with a duplicate identifier |
 | 11 | the SHACL-SPARQL uniqueness rule is quadratic: 1,000 records in 24 s, 5,000 in about ten minutes; at scale, identity belongs to the primary key, SHACL to samples | timing the real-data check |
+| 12 | the sample had no record that is both crime and misdemeanour, so the test for the "not exclusive" decision could not fail | **human**, answering CQ06 by hand |
 
 : Findings of the validation loop {tbl-colwidths="[4,66,30]"}
 
@@ -353,7 +366,7 @@ needs:
   engineered undocumented API endpoints from the web app's JavaScript, read
   Czech documentation, wrote 142 English labels, and produced consistent
   definitions and shapes quickly.
-- **Its errors were confident and plausible.** All eleven findings were
+- **Its errors were confident and plausible.** All twelve findings were
   introduced or missed by the LLM. The defence was not a more careful LLM but
   the loop: every error surfaced within one validation run of being made.
 - **It models what it sees.** Given an API organised in monthly files, it
