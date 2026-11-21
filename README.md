@@ -81,6 +81,10 @@ ontology would have hidden:
    `krim:stateAsOf`, a uniqueness rule and a tested "latest observation wins" merge.
 9. **A legitimate limit of the RDF test layer.** SPARQL 1.1 has no weekday
    function, so CQ16 is tested in SQL only.
+10. **Answering by hand finds what queries cannot.** The domain expert answered five
+    questions by hand; reaching agreement took ten disagreements: three slips by the
+    expert, five imprecise questions or data presentations, two validator faults.
+    Each side was wrong at least once, so neither is treated as the oracle.
 
 ## Layout
 

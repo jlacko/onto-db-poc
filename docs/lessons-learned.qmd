@@ -68,7 +68,7 @@ mention), **Not tested**.
 *Guide:* draft 15–30 questions, edit them, treat them as the spec; later they
 become SPARQL tests.
 
-*What happened:* 17 questions were drafted after exploring the source (not
+*What happened:* 17 questions were drafted (19 after the revision described below) after exploring the source (not
 before: the questions only became concrete once the data shape was known). Two
 extensions proved valuable:
 

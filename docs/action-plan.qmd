@@ -143,6 +143,18 @@ expert to answer by hand from the sample data
 is the main **manual learning step**: answering a question by hand reveals
 whether it is precise enough.
 
+**Outcome.** All five were answered and pass. Getting there took ten
+disagreements between the expert and the queries: three slips by the expert,
+five imprecise questions or data presentations, and two faults of the
+validator (listed in the lessons-learned document). They produced three
+decisions in the spec (CQ03 omits categories with no remaining records; crime
+and misdemeanour are not exclusive, so CQ06 has a third group; CQ13 spells out
+one row per record and category), *Check* lines that let the answerer verify
+an answer before running the validator, and a validator that, for hand-answered
+questions, says where an answer disagrees but never shows the computed values.
+Because the numbers are identifiers grouped by topic, the file starts with a
+generated numeric index (`scripts/cq_index.py`).
+
 ~~~~text
 ### CQ02: Records in a category, including subtypes  (your answer)
 Question. How many records fall under category Burglary (code 18),
@@ -263,8 +275,9 @@ type. These are conventions of the source, not rules of the domain.
 |---|---|
 | `tests/sample-data.ttl` | 13 fictional records covering every CQ and shape (including a record that is both crime and misdemeanour), and one deliberate warning |
 | `tests/sample-records.csv`, `sample-types.csv` | the same data as CSV for a spreadsheet (generated) |
-| `tests/invalid-data.ttl` | 7 individuals, each breaking exactly one rule, annotated `# expect: <property>` |
-| `tests/cq/CQnn.rq`, `CQnn.sql` | each competency question in SPARQL and SQL (CQ16 SQL only) |
+| `tests/invalid-data.ttl` | 7 individuals, each breaking exactly one rule (including a duplicate identifier), annotated `# expect: <property>` |
+| `tests/cq/CQnn.rq`, `CQnn.sql` | each competency question in SPARQL and SQL (CQ16 and CQ19 SQL only) |
+| `tests/observations/*.csv` | two downloads of the same month observed at different times: the loader's "latest state wins" test |
 
 : Test suite {tbl-colwidths="[30,70]"}
 
@@ -278,10 +291,11 @@ type. These are conventions of the source, not rules of the domain.
 |---|---|
 | 1. Parse | all Turtle files parse |
 | 2. Reasoner | HermiT finds ontology + reference + sample data consistent, *and* finds a contradictory individual inconsistent (negative test) |
-| 3. Lint | every term has en/cs labels, one definition, a status; no `rdfs:domain`/`range`; no duplicate labels; every `krim:` term used in shapes, samples and queries is declared; every property shape has a plain-language rule |
-| 4. SHACL | sample data conforms; exactly the expected warning is raised; each negative test fails *for the stated reason* |
-| 5. Generated artifacts | `db/schema.sql`, the dictionary, the glossary and the sample CSVs are current; the sample loads into the schema with no FK errors |
-| 6. Competency questions | SPARQL = SQL (parity), and both = the expected answer written in the spec |
+| 3. Lint | every term has en/cs labels, one definition, a status; no `rdfs:domain`/`range`; no duplicate labels; every `krim:` term used in shapes, samples and queries is declared; every property shape has a plain-language rule; every column has en/cs names, a definition and a value domain (data dictionary); every business term, code and record rule has its Czech text (glossary) |
+| 4. SHACL | sample data conforms; exactly the expected warning is raised; each negative test (including a duplicate identifier) fails *for the stated reason* |
+| 5. Generated artifacts | `db/schema.sql`, the dictionary, the glossary, the sample CSVs and the CQ index are current; the sample loads into the schema with no FK errors |
+| 6. Competency questions | SPARQL = SQL (parity), and both = the expected answer written in the spec; for hand-answered questions a failure explains where, never the computed values (`--show-answers` prints them) |
+| 7. Loader | the same record observed twice, in either order, ends as one row in the latest state; reloading is idempotent |
 
 : The validation loop {tbl-colwidths="[25,75]"}
 
@@ -561,7 +575,7 @@ CQ06, open question 5).
 
 # Next steps
 
-1. **Answer the five pending CQs** and review the decisions in CQ03 and CQ06 (H).
+1. ~~Answer the five pending CQs~~ (done: all pass; see Step 1).
 2. **Resolve the six open questions** (H), then update definitions; the
    `mp` editorial note goes once the publisher confirms.
 3. **Review the data dictionary** (H): send `db/data-dictionary.xlsx` out for
