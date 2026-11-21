@@ -374,7 +374,10 @@ def norm(v) -> str:
         return str(int(f)) if f == int(f) else f"{f:.3f}".rstrip("0")
     s = str(v)
     try:
-        return norm(float(s)) if re.fullmatch(r"-?\d+(\.\d+)?", s) else s
+        # numbers as people write them: "0.5", ".5", "0,5" (Czech decimal comma)
+        if re.fullmatch(r"-?(\d+([.,]\d*)?|[.,]\d+)", s):
+            return norm(float(s.replace(",", ".")))
+        return s
     except ValueError:
         return s
 
