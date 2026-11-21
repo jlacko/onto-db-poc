@@ -394,6 +394,17 @@ def hand_hint(header: list[str], want: list[tuple], got: list[tuple]) -> str:
     it never prints a computed value other than the row keys you already wrote.
     """
     lines, width = [], len(header)
+    if width == 1:  # a single value or a plain list: there is no key to line rows up by
+        extra = sorted({r[0] for r in want} - {r[0] for r in got})
+        missing = len({r[0] for r in got} - {r[0] for r in want})
+        if len(want) == 1 and len(got) == 1:
+            return f"      your value for {header[0]} differs from the result"
+        if extra:
+            lines.append(f"values in your answer that the result does not have: {', '.join(extra)}")
+        if missing:
+            lines.append(f"the result has {missing} value(s) your answer does not have")
+        lines.append(f"values: yours {len(want)}, result {len(got)}")
+        return "\n".join("      " + l for l in lines)
     short = sorted({r[0] for r in want if len(r) < width})
     if short:
         lines.append(f"incomplete rows (fewer than the {width} columns {' | '.join(header)}): {', '.join(short)}")
