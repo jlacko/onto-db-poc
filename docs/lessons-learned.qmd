@@ -157,8 +157,8 @@ separator broke a rule the format did specify. A checker may explain a failure
 better, but it must not change what counts as a pass.
 
 All five hand-answered questions (CQ02, CQ03, CQ06, CQ12, CQ13) passed in the
-end, after twelve disagreements: four slips by the expert, five imprecise
-questions or data presentations, and three faults of the tooling. None of them
+end, after ten disagreements: three slips by the expert, five imprecise
+questions or data presentations, and two faults of the validator. None of them
 would have been found by running the queries alone.
 
 A method that treats the expert as an oracle would have "fixed" the queries to
