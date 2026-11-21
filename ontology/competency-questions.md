@@ -126,6 +126,9 @@ of its categories is not 97. Each record falls into exactly one group:
 *misdemeanours* (only 97), *other* (no 97), *both* (97 and another category).
 The three groups add up to the month's total (CQ01). "Other" includes crimes
 but also fires and traffic accidents (open question 4).
+**Check.** The three numbers in each row add up to the month's total in CQ01;
+decide by a record's *categories*, not its types (types such as 76 or 111 are
+subgroups of 97).
 **Your notes on the decision:** _…_
 
 ```expected
