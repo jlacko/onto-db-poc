@@ -113,6 +113,14 @@ than insight. The most-specific type (CQ12) is still left to the reader. Where
 to draw that line is itself a design choice of the worksheet: pre-compute the
 mechanics, leave the judgements.
 
+*The validator must not leak the answer.* On the expert's first partial answer,
+the validator printed the queries' full result on failure, which gave away the
+columns not yet worked out. An expected answer is only independent if the
+expert has not seen the computed one. For questions marked for hand answering,
+failures now say only *where* the answer disagrees (missing columns, rows with
+no counterpart, which columns differ, row counts) and confirm the filled
+columns that agree; the values appear only with an explicit `--show-answers`.
+
 ## Practice 2: An LLM-friendly source format (Adapted)
 
 *Guide:* Turtle for OWL, or LinkML for class/slot/enum models.

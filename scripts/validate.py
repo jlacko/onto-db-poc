@@ -17,6 +17,8 @@ Checks, in order:
                 in the latest state; reloads are idempotent
 
 Writes a readable report to build/validation-report.md. Exit code 1 on any failure.
+For questions marked ✍ (answered by the domain expert), failures say where the
+answer disagrees but never print the computed values; --show-answers prints them.
 """
 import io
 import re
@@ -41,6 +43,10 @@ PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX dcterms: <http://purl.org/dc/terms/>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 """
+
+
+# Hand-answered (✍) questions never show computed values unless asked for.
+SHOW_ANSWERS = "--show-answers" in sys.argv
 
 
 class Report:
@@ -339,8 +345,9 @@ def check_ddl(rep: Report):
 def parse_cq_spec() -> dict[str, dict]:
     text = (ONTO / "competency-questions.md").read_text(encoding="utf-8")
     spec = {}
-    for m in re.finditer(r"^### (CQ\d+)[^\n]*\n(.*?)(?=^### |^## |\Z)", text, re.M | re.S):
-        cq, body = m.group(1), m.group(2)
+    for m in re.finditer(r"^### (CQ\d+)([^\n]*)\n(.*?)(?=^### |^## |\Z)", text, re.M | re.S):
+        cq, heading, body = m.group(1), m.group(2), m.group(3)
+        hand = "✍" in heading  # answered by the domain expert: never reveal the computed answer
         block = re.search(r"```expected\n(.*?)```", body, re.S)
         if not block:
             spec[cq] = {"expected": None}
@@ -349,7 +356,7 @@ def parse_cq_spec() -> dict[str, dict]:
         pending = any("TODO" in l for l in lines)
         header = [h.strip() for h in lines[0].split("|")]
         rows = [] if pending else [[c.strip() for c in l.split("|")] for l in lines[1:]]
-        spec[cq] = {"expected": rows, "header": header, "pending": pending}
+        spec[cq] = {"expected": rows, "header": header, "pending": pending, "hand": hand}
     return spec
 
 
@@ -376,6 +383,40 @@ def as_set(rows) -> list[tuple]:
     return sorted(tuple(norm(c) for c in r) for r in rows)
 
 
+def hand_hint(header: list[str], want: list[tuple], got: list[tuple]) -> str:
+    """Where a hand answer disagrees, without revealing the computed values.
+
+    Says which columns are missing, which of *your* rows (by first column) have no
+    counterpart or differ, and in which columns, and how many rows the result has;
+    it never prints a computed value other than the row keys you already wrote.
+    """
+    lines, width = [], len(header)
+    short = sorted({r[0] for r in want if len(r) < width})
+    if short:
+        lines.append(f"incomplete rows (fewer than the {width} columns {' | '.join(header)}): {', '.join(short)}")
+    got_by_key = {r[0]: r for r in got}
+    extra = sorted(r[0] for r in want if r[0] not in got_by_key)
+    if extra:
+        lines.append(f"rows in your answer that the result does not have: {', '.join(extra)}")
+    agree = []
+    for r in want:
+        g = got_by_key.get(r[0])
+        if g is None:
+            continue
+        cols = [header[i] for i in range(1, min(len(r), width)) if i < len(g) and r[i] != g[i]]
+        if cols:
+            lines.append(f"row {r[0]}: differs in {', '.join(cols)}")
+        elif len(r) > 1:
+            agree.append(r[0])
+    if agree:
+        lines.append(f"rows whose filled columns agree: {', '.join(sorted(agree))}")
+    missing = len({r[0] for r in got} - {r[0] for r in want})
+    if missing:
+        lines.append(f"the result has {missing} row(s) your answer does not have")
+    lines.append(f"rows: yours {len(want)}, result {len(got)}")
+    return "\n".join("      " + l for l in lines)
+
+
 def check_cq(rep: Report):
     rep.section("6. Competency questions (you vs SPARQL vs SQL)")
     spec = parse_cq_spec()
@@ -398,7 +439,11 @@ def check_cq(rep: Report):
             rep.add("FAIL", f"{cq}: query error: {e}")
             continue
         if sparql is not None and sql is not None and sparql != sql:
-            rep.add("FAIL", f"{cq}: SPARQL and SQL disagree\n      SPARQL {sparql}\n      SQL    {sql}")
+            if exp.get("hand") and not SHOW_ANSWERS:
+                rep.add("FAIL", f"{cq}: SPARQL and SQL disagree ({len(sparql)} vs {len(sql)} rows; values hidden "
+                                "for a hand-answered question, rerun with --show-answers to see them)")
+            else:
+                rep.add("FAIL", f"{cq}: SPARQL and SQL disagree\n      SPARQL {sparql}\n      SQL    {sql}")
             continue
         got = sparql if sparql is not None else sql
         layers = " + ".join(x for x, y in (("SPARQL", sparql), ("SQL", sql)) if y is not None)
@@ -410,8 +455,11 @@ def check_cq(rep: Report):
         if got == want:
             rep.add("PASS", f"{cq}: {layers} match the expected answer ({len(got)} row(s))")
         else:
-            rep.add("FAIL", f"{cq}: {layers} differ from the expected answer\n"
-                            f"      expected {want}\n      got      {got}")
+            if exp.get("hand") and not SHOW_ANSWERS:
+                rep.add("FAIL", f"{cq}: your answer differs from {layers}\n" + hand_hint(exp["header"], want, got))
+            else:
+                rep.add("FAIL", f"{cq}: {layers} differ from the expected answer\n"
+                                f"      expected {want}\n      got      {got}")
 
 
 # ---------------------------------------------------------------------------
