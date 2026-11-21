@@ -99,6 +99,17 @@ looks the way it does**: the questions, not the Turtle, are where a domain
 expert spots a wrong model fastest. This review cost minutes; it changed the
 ontology, the schema, the loader and the tests.
 
+*Sample data as CSV, not Markdown.* The sample records were first rendered as
+a Markdown table: readable, but the expert had to count by eye. The expert
+asked for CSV instead (one file of records, one of offence types with their
+broader type and category) so that the hand answers could be worked out in a
+spreadsheet with filters and lookups. The test data did not change, only its
+form; the CSVs are generated from the same Turtle and checked for drift. The
+general point: the "manual" step of the method is manual *thinking*, not manual
+counting, and the reader should get the tool that supports it. The CSVs
+deliberately pre-compute nothing a question asks (no category per record, no
+most-specific type), so the exercise stays an exercise.
+
 ## Practice 2: An LLM-friendly source format (Adapted)
 
 *Guide:* Turtle for OWL, or LinkML for class/slot/enum models.
@@ -243,6 +254,12 @@ only) and a language split by audience.
   are derived concepts and metrics that depend on decisions in the competency
   questions. The guide's part III advice to define metrics explicitly is where
   the glossary's gaps point.
+- **Choose the format by what the reader does with it.** The guide defaults to
+  Excel for business readers. Here the same reader asked for two different
+  formats: a PDF table for the glossary, which is *read*, and CSV for the
+  sample data, which is *worked with* (filtered, looked up, counted). Generating
+  every output from one source makes such switches cheap: each change of form
+  took one small script edit and no change to the ontology.
 
 ## Part III: Ontology and data (Confirmed, Extended)
 
