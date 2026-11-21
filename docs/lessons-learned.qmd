@@ -140,6 +140,8 @@ side has been wrong at least once:
 | CQ06 | misdemeanours counted as *both* | the data presentation: the `types` column lists subgroups of 97 that look like other codes | answer corrected using the `categories` column |
 | CQ12 | rows typed without the `\|` separator | the expert: the format rule was explicit; the failure was correct | answer corrected; the LLM had loosened the validator to accept it, and that change was reverted |
 | CQ12 | one type on two rows | the expert: "per type" means one row per type with the total | answer corrected; the validator now flags repeated keys |
+| CQ13 | one row per record instead of one per record and category | the question: the answer shape was stated in one terse sentence | decision extended with the rule and a made-up example |
+| CQ13 | correct rows reported as "differing" | the validator: lined rows up by record although several rows share a record | hint fixed to compare whole rows (what passes unchanged) |
 
 : Disagreements while answering by hand {tbl-colwidths="[8,30,32,30]"}
 
@@ -153,6 +155,11 @@ fixing the checker and bending it: accepting `.5` for `0.5` fixed a parser bug,
 because the format never specified how to write numbers; accepting a missing
 separator broke a rule the format did specify. A checker may explain a failure
 better, but it must not change what counts as a pass.
+
+All five hand-answered questions (CQ02, CQ03, CQ06, CQ12, CQ13) passed in the
+end, after twelve disagreements: four slips by the expert, five imprecise
+questions or data presentations, and three faults of the tooling. None of them
+would have been found by running the queries alone.
 
 A method that treats the expert as an oracle would have "fixed" the queries to
 match the CQ02 slip; one that treats the queries as the oracle would have

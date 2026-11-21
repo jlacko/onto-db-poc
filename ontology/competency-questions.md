@@ -169,7 +169,9 @@ a record 9999 with categories `18 35` gives the rows `9999 | 18` and `9999 | 35`
 ```expected
 record | category
 1004 | 1
+1004 | 84
 1013 | 63
+1013 | 97
 ```
 
 ## B. Place and time
