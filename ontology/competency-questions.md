@@ -147,7 +147,13 @@ types, so e.g. `18, 19` means "Burglary – flat"; only 19 counts here.)
 
 ```expected
 type | records
-TODO
+42 |  1
+19 |  2
+111 | 1
+102 | 1
+54 | 1
+113 | 1
+
 ```
 
 ### CQ13: Records spanning two categories ✍ your answer

@@ -355,9 +355,8 @@ def parse_cq_spec() -> dict[str, dict]:
         lines = [l.strip() for l in block.group(1).strip().splitlines() if l.strip()]
         pending = any("TODO" in l for l in lines)
         header = [h.strip() for h in lines[0].split("|")]
-        # Cells are separated by "|"; a row typed with spaces or tabs only is accepted too.
-        split = lambda l: [c.strip() for c in l.split("|")] if "|" in l else l.split()
-        rows = [] if pending else [split(l) for l in lines[1:]]
+        # Cells are separated by "|" (the format rule); a row without it stays one cell and fails.
+        rows = [] if pending else [[c.strip() for c in l.split("|")] for l in lines[1:]]
         spec[cq] = {"expected": rows, "header": header, "pending": pending, "hand": hand}
     return spec
 
@@ -396,6 +395,9 @@ def hand_hint(header: list[str], want: list[tuple], got: list[tuple]) -> str:
     it never prints a computed value other than the row keys you already wrote.
     """
     lines, width = [], len(header)
+    no_sep = [r[0] for r in want if width > 1 and len(r) == 1]
+    if no_sep:
+        lines.append(f"rows without the '|' separator (the format requires it): {', '.join(no_sep)}")
     keys = [r[0] for r in want]
     dup = sorted({k for k in keys if keys.count(k) > 1})
     if dup and width > 1:

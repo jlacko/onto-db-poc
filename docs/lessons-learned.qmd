@@ -138,8 +138,21 @@ side has been wrong at least once:
 | CQ06 | totals did not add up | the question: assumed crime and misdemeanour are exclusive | model decision, third group, new sample record |
 | CQ06 | one record counted in all three groups | the question's wording: "exclusive groups" vs "overlapping counts" both plausible | reading made explicit; self-check "groups add up to the month's total" |
 | CQ06 | misdemeanours counted as *both* | the data presentation: the `types` column lists subgroups of 97 that look like other codes | answer corrected using the `categories` column |
+| CQ12 | rows typed without the `\|` separator | the expert: the format rule was explicit; the failure was correct | answer corrected; the LLM had loosened the validator to accept it, and that change was reverted |
+| CQ12 | one type on two rows | the expert: "per type" means one row per type with the total | answer corrected; the validator now flags repeated keys |
 
 : Disagreements while answering by hand {tbl-colwidths="[8,30,32,30]"}
+
+*Do not bend the checker to fit the answer.* When the CQ12 answer lacked the
+required `|` separators, the LLM's first reaction was to make the validator
+accept spaces as well, so the answer would pass. The expert pointed out that
+the separator was mandatory and the failure was the correct result: making the
+check more lenient silently changed the spec to fit one answer. The leniency
+was reverted; the check still fails, now with a precise hint. The line between
+fixing the checker and bending it: accepting `.5` for `0.5` fixed a parser bug,
+because the format never specified how to write numbers; accepting a missing
+separator broke a rule the format did specify. A checker may explain a failure
+better, but it must not change what counts as a pass.
 
 A method that treats the expert as an oracle would have "fixed" the queries to
 match the CQ02 slip; one that treats the queries as the oracle would have
