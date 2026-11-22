@@ -312,7 +312,7 @@ identifier on two records)?
 **Decision.** One occurrence is one record, whichever download file and refresh
 it came from. When the publisher reports a record again (e.g. first as unsolved,
 later as cleared), the later report *replaces* the earlier one. The expected
-answer is an empty result. The loader test (`validate.py`, section 7) feeds the
+answer is an empty result. The loader test (`validate.py`, section 8) feeds the
 same record in two observations, in both orders, and expects one row in the
 later state.
 

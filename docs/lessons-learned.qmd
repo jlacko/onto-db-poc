@@ -174,6 +174,20 @@ failures now say only *where* the answer disagrees (missing columns, rows with
 no counterpart, which columns differ, row counts) and confirm the filled
 columns that agree; the values appear only with an explicit `--show-answers`.
 
+*Extension, added after release 0.1.0: concepts and cardinality first.* The two
+largest corrections of the first version were structural: the monthly download
+file modelled as a concept, and the anonymised location modelled as a value on
+the record when it is a shared area (a fact found on the publisher's website
+after the release). The competency questions caught neither, because they ask
+for answers, not for what exists and how many. So the sequence now starts with
+a new step that the guide does not have: the key relations written as plain
+sentences with a cardinality (*"every offence record has exactly one clearance
+state"*), judged true or false by the expert, each asked twice (true in the
+domain? kept by the source?) and traced to the shape that enforces it. The
+validation loop checks the trace both ways. Rejected statements stay in the
+file as a record of mistakes not to repeat. Whether the step earns its place is
+for iteration 2 to show.
+
 ## Practice 2: An LLM-friendly source format (Adapted)
 
 *Guide:* Turtle for OWL, or LinkML for class/slot/enum models.
@@ -451,3 +465,7 @@ needs:
    data, not only to the ontology release.
 7. Recommend **drift checks** for every generated artifact (DDL, dictionary,
    glossary), run inside the validation loop.
+8. Consider a step **before** the competency questions: **concepts and
+   cardinality as plain sentences**, judged by the expert and traced to the
+   shapes. It asks the structural questions (what exists, how many, shared or
+   not) that competency questions miss.

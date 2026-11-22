@@ -113,7 +113,7 @@ Facts that mattered for modelling:
 - Data with locations exist from about mid-2013; the R project distrusted data
   before 2016.
 - The downloads are split by month **only to keep files manageable**; the split
-  has no meaning in the domain (a point the reconnaissance missed; see Step 9).
+  has no meaning in the domain (a point the reconnaissance missed; see Step 10).
 - Files are regenerated as investigations progress, so the same record can be
   published again in a different state.
 
@@ -122,7 +122,56 @@ Facts that mattered for modelling:
 Each step names who does the work: **H** = human (domain expert), **L** = LLM
 (Claude Code), **S** = script (deterministic, rerunnable).
 
-## Step 1: Competency questions (L drafts, H edits and answers)
+## Step 1: Concepts and cardinality (L drafts, H judges, S checks)
+
+*Added after release 0.1.0; not in the guide.* File: `ontology/concepts.md`.
+Before any competency question, the key concepts and their relations are stated
+as plain sentences, one per statement, each with a cardinality: *"Every offence
+record has exactly one clearance state"*, *"An anonymisation area is shared by
+any number of records"*. The domain expert marks each one `true`, `false` or
+`depends`. A judgement takes seconds; answering a competency question by hand
+takes much longer.
+
+Each statement is asked two ways: is it true **in the domain**, and is it what
+**the source** chose to keep? An offence can involve several places (reported,
+consequence, committed); the publisher keeps one per record and labels its kind.
+Writing both answers down keeps the source's choices from passing as facts of
+the domain.
+
+~~~~text
+### S06: Every offence record has exactly one clearance state.
+```statement
+subject: krim:OffenceRecord
+path:    krim:hasClearanceState
+object:  krim:ClearanceState
+count:   1..1
+verdict: true
+shape:   krim:OffenceRecordShape
+```
+~~~~
+
+The statements are traceable: each names the SHACL shape that enforces it, and
+the validation loop (section 3) checks that every statement marked `true` is
+enforced with the same cardinality, that no shape enforces a statement marked
+`false`, and lists shape cardinalities that no statement covers. Rejected
+statements stay in the file (e.g. *"every record belongs to exactly one monthly
+extract"*): they record mistakes the model must not make again. Where the LLM
+or a script checked a statement against the source data, the block carries the
+evidence (e.g. *every 2025 record's point is the centre of one anonymisation
+area*).
+
+**Why it was added.** The two largest corrections of the first version were
+structural, not answers: the monthly download file modelled as a concept
+(pagination, a "one record, one extract" claim), and the anonymised location
+modelled as a value on the record, when it is a shared area (many records, one
+area). The competency questions caught neither. A list of cardinality sentences
+asks exactly these questions, early and cheaply.
+
+**Outcome.** 21 statements: 13 for the model of release 0.1.0 (all enforced),
+2 rejected, and 6 for the anonymisation areas of iteration 2, awaiting the
+expert's verdict.
+
+## Step 2: Competency questions (L drafts, H edits and answers)
 
 File: `ontology/competency-questions.md`. 19 questions in five groups (counting
 and classification; place and time; provenance and vocabulary; identity and
@@ -171,7 +220,7 @@ One question (CQ17, *which municipality?*) is recorded as a **known gap**: the
 national downloads cannot answer it, and the document says what closing the gap
 would take.
 
-## Step 2: Reuse survey (L proposes, H approves)
+## Step 3: Reuse survey (L proposes, H approves)
 
 | Vocabulary | Used for |
 |---|---|
@@ -188,10 +237,10 @@ The publisher's own IRIs were *linked*, not *adopted* as concept identifiers:
 they do not resolve, and they contain a typo (`/dowloads/`) and a version
 segment (`/v1/`), both fragile.
 
-## Step 3: Skeleton in Turtle (L)
+## Step 4: Skeleton in Turtle (L)
 
 File: `ontology/kriminalita.ttl`. A lean OWL module of 4 classes and 8 own
-properties (after the revision in Step 9):
+properties (after the revision in Step 10):
 
 | Class | Meaning (abridged) |
 |---|---|
@@ -211,7 +260,7 @@ inference rules, not constraints), plus only two modest axioms for the reasoner
 to check: records and codelist concepts are disjoint, and so are the three
 codelists.
 
-## Step 4: Definitions and annotations (L writes, H reviews)
+## Step 5: Definitions and annotations (L writes, H reviews)
 
 Every term carries labels in English and Czech, one genus–differentia
 definition, an example where useful, a scope note saying what it does *not*
@@ -236,7 +285,7 @@ documentation, supplied by the human, showed it is the time of report. Because
 0.1.0 was unreleased it was renamed; after a release it would have needed
 deprecation and a new IRI.
 
-## Step 5: Reference data (S generates, H maintains translations)
+## Step 6: Reference data (S generates, H maintains translations)
 
 `scripts/build_reference.py` downloads the three JSON-LD codelists and writes
 SKOS concept schemes to `ontology/reference/{types,states,relevance}.ttl`:
@@ -246,7 +295,7 @@ hierarchy. English labels and the definitions of states and relevance live in a
 **hand-maintained CSV** (`codelist-texts.csv`); the Turtle files are generated and
 never edited.
 
-## Step 6: SHACL shapes (L writes, H reviews the sentences)
+## Step 7: SHACL shapes (L writes, H reviews the sentences)
 
 File: `ontology/shapes.ttl`. One node shape per class. Every property shape
 states its rule as one plain sentence (`sh:description`), which is what a
@@ -269,7 +318,7 @@ Two rules are **warnings**, not violations: points should lie inside the Czech
 bounding box, and a record tagged with a type should also carry its broader
 type. These are conventions of the source, not rules of the domain.
 
-## Step 7: Test suite (L builds, H answers CQs)
+## Step 8: Test suite (L builds, H answers CQs)
 
 | File | Content |
 |---|---|
@@ -281,7 +330,7 @@ type. These are conventions of the source, not rules of the domain.
 
 : Test suite {tbl-colwidths="[30,70]"}
 
-## Step 8: Validation loop (S; run after every change)
+## Step 9: Validation loop (S; run after every change)
 
 ```bash
 .venv/bin/python scripts/validate.py
@@ -291,17 +340,18 @@ type. These are conventions of the source, not rules of the domain.
 |---|---|
 | 1. Parse | all Turtle files parse |
 | 2. Reasoner | HermiT finds ontology + reference + sample data consistent, *and* finds a contradictory individual inconsistent (negative test) |
-| 3. Lint | every term has en/cs labels, one definition, a status; no `rdfs:domain`/`range`; no duplicate labels; every `krim:` term used in shapes, samples and queries is declared; every property shape has a plain-language rule; every column has en/cs names, a definition and a value domain (data dictionary); every business term, code and record rule has its Czech text (glossary) |
-| 4. SHACL | sample data conforms; exactly the expected warning is raised; each negative test (including a duplicate identifier) fails *for the stated reason* |
-| 5. Generated artifacts | `db/schema.sql`, the dictionary, the glossary, the sample CSVs and the CQ index are current; the sample loads into the schema with no FK errors |
-| 6. Competency questions | SPARQL = SQL (parity), and both = the expected answer written in the spec; for hand-answered questions a failure explains where, never the computed values (`--show-answers` prints them) |
-| 7. Loader | the same record observed twice, in either order, ends as one row in the latest state; reloading is idempotent |
+| 3. Concepts | every statement marked `true` in `concepts.md` is enforced by the shape it names, with the same cardinality; no shape enforces a statement marked `false` |
+| 4. Lint | every term has en/cs labels, one definition, a status; no `rdfs:domain`/`range`; no duplicate labels; every `krim:` term used in shapes, samples and queries is declared; every property shape has a plain-language rule; every column has en/cs names, a definition and a value domain (data dictionary); every business term, code and record rule has its Czech text (glossary) |
+| 5. SHACL | sample data conforms; exactly the expected warning is raised; each negative test (including a duplicate identifier) fails *for the stated reason* |
+| 6. Generated artifacts | `db/schema.sql`, the dictionary, the glossary, the sample CSVs and the CQ index are current; the sample loads into the schema with no FK errors |
+| 7. Competency questions | SPARQL = SQL (parity), and both = the expected answer written in the spec; for hand-answered questions a failure explains where, never the computed values (`--show-answers` prints them) |
+| 8. Loader | the same record observed twice, in either order, ends as one row in the latest state; reloading is idempotent |
 
 : The validation loop {tbl-colwidths="[25,75]"}
 
 The report is written to `build/validation-report.md`.
 
-## Step 9: Domain review (H)
+## Step 10: Domain review (H)
 
 Building the ontology produced six open questions for the domain expert, kept
 in section E of the CQ file (e.g. *what does `mp` mean?*, *is 00:00 a
@@ -344,7 +394,7 @@ deprecated):
 - The download files survive only in a technical table (`source_file`) used for
   incremental refresh, plus `load_run` for the "as of" of the whole database.
 
-## Step 10: DDL generation (S)
+## Step 11: DDL generation (S)
 
 ```bash
 .venv/bin/python scripts/generate_ddl.py     # writes db/schema.sql
@@ -374,9 +424,9 @@ Result: 5 domain tables (`offence_record`, `offence_record_type`,
 `offence_type_ancestor`, two technical tables for the loader (`source_file`,
 `load_run`, declared in `scripts/dictionary.py` and marked *technical* in the
 dictionary), and two metadata tables: `meta_release` (the ontology version the
-schema realises) and `meta_column` (the data dictionary, Step 11).
+schema realises) and `meta_column` (the data dictionary, Step 12).
 
-## Step 11: Data dictionary (S): a key output
+## Step 12: Data dictionary (S): a key output
 
 The guide (part III) puts the data element between the concept and the
 database column: *object class + property + value domain* (ISO/IEC 11179), with
@@ -453,7 +503,7 @@ One example row, as it appears in the dictionary:
 
 : One data element {tbl-colwidths="[28,72]"}
 
-## Step 12: Populating the database (S)
+## Step 13: Populating the database (S)
 
 ```bash
 .venv/bin/python scripts/load.py --year 2025
@@ -489,7 +539,7 @@ SPARQL constraint that compares every record with every other, so its cost
 grows quadratically (1,000 records take 24 s, 5,000 about ten minutes). At full
 scale, identity is enforced by the primary key and checked by CQ18 in SQL.
 
-The merge is tested in the validation loop (section 7) with two small
+The merge is tested in the validation loop (section 8) with two small
 observation files of the same month: record 5001 first *unsolved*, later
 *cleared and reclassified*. Loaded in either order, it ends as one row in the
 later state; loading a file twice changes nothing.
@@ -515,7 +565,7 @@ Result for 2025:
 
 : Load result, 2025 {tbl-colwidths="[60,40]"}
 
-## Step 13: Business glossary in Czech (S generates, H reviews the wording)
+## Step 14: Business glossary in Czech (S generates, H reviews the wording)
 
 ```bash
 .venv/bin/python scripts/generate_glossary.py --pdf     # docs/glossary.pdf
@@ -562,6 +612,8 @@ CQ06, open question 5).
 |---|:-:|:-:|:-:|
 | Scope, choice of Python, pointers to R project and documentation | ● | | |
 | Source reconnaissance (API, codelists, docs) | | ● | |
+| Drafting concept statements; checking them against the source | | ● | ● |
+| Judging concept statements | ● | | |
 | Drafting competency questions and decisions | | ● | |
 | Answering key CQs by hand; reviewing decisions | ● | | |
 | Skeleton, definitions, shapes | | ● | |
@@ -575,18 +627,21 @@ CQ06, open question 5).
 
 # Next steps
 
-1. ~~Answer the five pending CQs~~ (done: all pass; see Step 1).
-2. **Resolve the six open questions** (H), then update definitions; the
+1. **Judge the six concept statements for the anonymisation areas** (H;
+   S16–S21 in `concepts.md`), then iterate from Step 2.
+2. ~~Answer the five pending CQs~~ (done: all pass; see Step 2).
+3. **Resolve the six open questions** (H), then update definitions; the
    `mp` editorial note goes once the publisher confirms.
-3. **Review the data dictionary** (H): send `db/data-dictionary.xlsx` out for
+4. **Review the data dictionary** (H): send `db/data-dictionary.xlsx` out for
    comments, feed the returned comments back into the ontology and shapes, and
-   regenerate. (The dictionary itself is done; see Step 11.)
-4. **Review the Czech glossary** (H): correct the wording of the business
+   regenerate. (The dictionary itself is done; see Step 12.)
+5. **Review the Czech glossary** (H): correct the wording of the business
    definitions in the ontology, then add the pending derived terms once the CQ
    decisions are made.
-5. ~~Baseline~~ (done: first version merged and tagged `v0.1.0`; later
+6. ~~Baseline~~ (done: first version merged and tagged `v0.1.0`; later
    iterations are compared against it, and terms are deprecated, not removed).
-6. **First published release 1.0.0** (guide, part IV): fix the namespace, add
+7. **First published release 1.0.0** (guide, part IV): fix the namespace, add
    `owl:priorVersion` from then on, release ontology, shapes, DDL, dictionary and
    glossary as one bundle.
-7. Optional: close the CQ17 gap (municipality) using RÚIAN reference data.
+8. **Close the CQ17 gap (municipality)**: now part of iteration 2, since the
+   anonymisation areas carry RÚIAN municipality codes.

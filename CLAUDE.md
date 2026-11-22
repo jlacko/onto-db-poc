@@ -2,8 +2,9 @@
 
 Proof of concept of the ontology-first approach described in
 `llm-readable-ontologies.pdf`. **Primary aim: validate the LLM ontology method**
-(competency questions → reuse → Turtle skeleton → definitions → mechanical
-validation loop → CQ tests). The SQLite database built from Police CR crime data
+(concepts and cardinality → competency questions → reuse → Turtle skeleton →
+definitions → mechanical validation loop → CQ tests). The first step is our
+addition; the PDF was an inspiration, not a template. The SQLite database built from Police CR crime data
 is the secondary objective: it is the test that the ontology can drive a real
 data model.
 
@@ -14,6 +15,7 @@ for the API, not a template). Use the venv: `.venv/bin/python`.
 
 | Path | What | Edited by |
 |------|------|-----------|
+| `ontology/concepts.md` | Concepts and cardinality: one sentence per statement, the expert's verdict, the shape that enforces it. Change it first when structure changes. | hand |
 | `ontology/competency-questions.md` | The spec. Change it first. The index at the top is generated (`scripts/cq_index.py`). | hand |
 | `ontology/kriminalita.ttl` | Core OWL module: classes, properties, definitions | hand |
 | `ontology/shapes.ttl` | SHACL shapes = closed-world data rules; drive the DDL | hand |
@@ -78,6 +80,7 @@ Never hand-edit generated files; change the source and regenerate.
 .venv/bin/python scripts/validate.py
 ```
 
-It runs: parsing, HermiT consistency, a lint report (labels, definitions,
+It runs: parsing, HermiT consistency, the concept statements against the shapes,
+a lint report (labels, definitions,
 duplicates, undeclared terms), SHACL on valid and invalid samples, the
 competency-question SPARQL tests, and SPARQL/SQL parity on the sample data.

@@ -10,16 +10,17 @@ populated with a continuous, duplicate-free history of Czech crime records from 
 the baseline for further iterations. From here on, terms are deprecated, not
 renamed or removed.
 
-## The sequence (PDF part I), as implemented
+## The sequence (adapted from PDF part I)
 
-| PDF step | Here |
+| Step | Here |
 |---|---|
+| Concepts and cardinality (*our addition, not in the PDF*) | [`ontology/concepts.md`](ontology/concepts.md): key relations as plain sentences with a cardinality ("every record has exactly one clearance state"), judged true/false by the domain expert (✍), each traced to the SHACL shape that enforces it |
 | Competency questions | [`ontology/competency-questions.md`](ontology/competency-questions.md): an editable worksheet with executable `expected` answers. Some are left for the domain expert to answer by hand (✍). |
 | Reuse survey | SKOS (codelists), DCTERMS, DCAT, PROV-O, W3C WGS84, VS term status; the publisher's own codelist IRIs linked with `skos:exactMatch` |
 | Skeleton + definitions | [`ontology/kriminalita.ttl`](ontology/kriminalita.ttl): 5 classes, 9 properties, en/cs labels, genus–differentia definitions, scope notes, sources |
 | Reference data | [`ontology/reference/`](ontology/reference/): SKOS schemes generated from the publisher's JSON-LD codelists plus hand-kept English labels |
 | Closed-world rules | [`ontology/shapes.ttl`](ontology/shapes.ttl): SHACL, every rule also stated as a plain sentence |
-| Validation loop | [`scripts/validate.py`](scripts/validate.py): parse, HermiT, lint, SHACL (+ negative tests), artifact drift, CQ tests |
+| Validation loop | [`scripts/validate.py`](scripts/validate.py): parse, HermiT, concept statements vs shapes, lint, SHACL (+ negative tests), artifact drift, CQ tests |
 | Test suite | [`ontology/tests/`](ontology/tests/): 13 sample records, 7 invalid individuals, 19 CQs in SPARQL and SQL |
 | Data model (part III) | [`db/schema.sql`](db/schema.sql), **generated** from the shapes |
 | Data dictionary | **generated** from ontology + shapes: `meta_column` table, [`db/data-dictionary.csv`](db/data-dictionary.csv), [`db/data-dictionary.xlsx`](db/data-dictionary.xlsx) (for review), [`docs/data-dictionary.pdf`](docs/data-dictionary.pdf) |

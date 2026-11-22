@@ -6,14 +6,17 @@ Checks, in order:
   1. parse      all Turtle files parse
   2. reasoner   HermiT finds the ontology + reference + sample data consistent,
                 and finds a deliberately contradictory individual inconsistent
-  3. lint       labels, definitions, status, duplicates, undeclared terms, policy,
+  3. concepts   every statement in ontology/concepts.md marked true is enforced
+                by the shape it names, with the same cardinality; no shape
+                enforces a statement marked false
+  4. lint       labels, definitions, status, duplicates, undeclared terms, policy,
                 data-dictionary and Czech glossary completeness
-  4. shacl      sample data conforms; each negative test fails for the expected reason
-  5. artifacts  db/schema.sql, the data dictionary, the glossary and the sample table are up to
+  5. shacl      sample data conforms; each negative test fails for the expected reason
+  6. artifacts  db/schema.sql, the data dictionary, the glossary and the sample table are up to
                 date; the schema loads in SQLite
-  6. cq         every competency question: SPARQL vs SQL vs the expected answer
+  7. cq         every competency question: SPARQL vs SQL vs the expected answer
                 in ontology/competency-questions.md
-  7. loader     the same record observed twice (in either order) ends as one row
+  8. loader     the same record observed twice (in either order) ends as one row
                 in the latest state; reloads are idempotent
 
 Writes a readable report to build/validation-report.md. Exit code 1 on any failure.
@@ -127,8 +130,135 @@ def check_reasoner(rep: Report):
 
 
 # ---------------------------------------------------------------------------
+STATEMENT_KEYS = ("subject", "path", "object", "count", "verdict", "shape")
+VERDICTS = ("true", "false", "depends")
+
+
+def parse_statements() -> dict[str, dict]:
+    """{S01: {title, subject, path, ...}} from the statement blocks in concepts.md."""
+    text = (ONTO / "concepts.md").read_text(encoding="utf-8")
+    out = {}
+    parts = re.split(r"^### (S\d+): (.*)$", text, flags=re.M)
+    for sid, title, body in zip(parts[1::3], parts[2::3], parts[3::3]):
+        m = re.search(r"```statement\n(.*?)```", body, re.S)
+        st = {"title": title.replace("✍ your verdict", "").strip(), "block": m is not None}
+        for line in (m.group(1).splitlines() if m else []):
+            if ":" in line:
+                k, v = line.split(":", 1)
+                st[k.strip()] = v.strip()
+        out[sid] = st
+    return out
+
+
+def _prop_shapes(g: Graph, node) -> list:
+    """Property shapes of a node shape, including those reached through sh:node."""
+    out = list(g.objects(node, SH.property))
+    for n in g.objects(node, SH.node):
+        out += _prop_shapes(g, n)
+    return out
+
+
+def _path_matches(g: Graph, ps, path: str) -> bool:
+    p = g.value(ps, SH.path)
+    if path.startswith("^"):
+        return p is not None and g.value(p, SH.inversePath) == g.namespace_manager.expand_curie(path[1:])
+    return p == g.namespace_manager.expand_curie(path)
+
+
+def _counts(g: Graph, ps) -> str:
+    lo, hi = g.value(ps, SH.minCount), g.value(ps, SH.maxCount)
+    return f"{lo.toPython() if lo is not None else 0}..{hi.toPython() if hi is not None else '*'}"
+
+
+def check_concepts(rep: Report):
+    rep.section("3. Concepts and cardinality (statements vs shapes)")
+    g = load_graph(ONTO / "shapes.ttl")
+    g.bind("dcterms", "http://purl.org/dc/terms/")
+    g.bind("skos", str(SKOS))
+    g.bind("xsd", "http://www.w3.org/2001/XMLSchema#")
+    curie = g.namespace_manager.expand_curie
+    stmts = parse_statements()
+    if not stmts:
+        rep.add("FAIL", "no statements found in ontology/concepts.md")
+        return
+    enforced = set()
+    for sid, st in stmts.items():
+        label = f"{sid} {st['title'].rstrip('.')}"
+        missing = [k for k in STATEMENT_KEYS if k not in st]
+        if not st["block"] or missing:
+            rep.add("FAIL", f"{label}: statement block missing or incomplete (needs {', '.join(missing or STATEMENT_KEYS)})")
+            continue
+        verdict, shape, path, count = st["verdict"], st["shape"], st["path"], st["count"]
+        if not re.fullmatch(r"\d+\.\.(\d+|\*)", count):
+            rep.add("FAIL", f"{label}: count '{count}' is not min..max (e.g. 1..1, 0..*)")
+            continue
+        if verdict == "TODO":
+            rep.add("PENDING", f"{label}: awaiting your verdict")
+            continue
+        if verdict not in VERDICTS:
+            rep.add("FAIL", f"{label}: verdict '{verdict}' is not one of true, false, depends, TODO")
+            continue
+        if (shape == "none" or verdict == "depends") and not st.get("reason"):
+            rep.add("FAIL", f"{label}: needs a reason (shape: none or verdict: depends)")
+            continue
+        subject = curie(st["subject"])
+        # property shapes on node shapes that target the subject class, with this path
+        targeting = list(g.subjects(SH.targetClass, subject))
+        hits = [ps for n in targeting for ps in _prop_shapes(g, n)
+                if path != "—" and _path_matches(g, ps, path)]
+        if verdict == "depends":
+            rep.add("INFO", f"{label}: depends: {st['reason']}")
+        elif verdict == "false":
+            same = [ps for ps in hits if _counts(g, ps) == count]
+            if same:
+                rep.add("FAIL", f"{label}: marked false, but a shape enforces it ({path} {count})")
+            else:
+                rep.add("PASS", f"{label}: rejected, and no shape enforces it")
+        elif shape == "none":
+            if count.endswith("..*") and count.startswith("0"):
+                rep.add("PASS", f"{label}: open cardinality, nothing to enforce")
+            else:
+                rep.add("WARN", f"{label}: true but not enforced yet ({st['reason']})")
+        else:
+            node = curie(shape)
+            if (node, RDF.type, SH.NodeShape) not in g:
+                rep.add("FAIL", f"{label}: {shape} is not a node shape in shapes.ttl")
+                continue
+            if g.value(node, SH.targetClass) != subject:
+                rep.add("FAIL", f"{label}: {shape} does not target {st['subject']}")
+                continue
+            own = [ps for ps in _prop_shapes(g, node) if path != "—" and _path_matches(g, ps, path)]
+            if not own and (node, SH.sparql, None) in g:
+                rep.add("PASS", f"{label}: enforced by the SPARQL constraint in {shape} (existence checked)")
+                continue
+            if not own:
+                rep.add("FAIL", f"{label}: {shape} has no property shape for {path}")
+                continue
+            ps = own[0]
+            enforced.add(ps)
+            got = _counts(g, ps)
+            obj = g.value(ps, SH["class"]) or g.value(ps, SH.datatype)
+            if got != count:
+                rep.add("FAIL", f"{label}: the statement says {count}, {shape} enforces {got} on {path}")
+            elif obj is not None and st["object"] != "—" and obj != curie(st["object"]):
+                rep.add("FAIL", f"{label}: the statement says values are {st['object']}, "
+                                f"{shape} says {g.namespace_manager.normalizeUri(obj)}")
+            else:
+                rep.add("PASS", f"{label}: enforced by {shape} ({path} {count})")
+    # the other direction: cardinalities in shapes that no statement covers
+    uncovered = []
+    for n in g.subjects(SH.targetClass, None):
+        for ps in _prop_shapes(g, n):
+            if ps in enforced or (g.value(ps, SH.minCount) is None and g.value(ps, SH.maxCount) is None):
+                continue
+            uncovered.append(f"{g.namespace_manager.normalizeUri(n)} {g.namespace_manager.normalizeUri(g.value(ps, SH.path))} {_counts(g, ps)}")
+    if uncovered:
+        rep.add("INFO", f"{len(uncovered)} shape cardinalities have no statement: " + "; ".join(sorted(set(uncovered))))
+
+
+# ---------------------------------------------------------------------------
 def check_lint(rep: Report):
-    rep.section("3. Lint (labels, definitions, duplicates, policy)")
+    rep.section("4. Lint (labels, definitions, duplicates, policy)")
     onto = load_graph(ONTO / "kriminalita.ttl")
     model = load_graph(*model_files())
     ns = str(KRIM)
@@ -255,7 +385,7 @@ def _shacl(data: Graph):
 
 
 def check_shacl(rep: Report):
-    rep.section("4. SHACL (closed-world data rules)")
+    rep.section("5. SHACL (closed-world data rules)")
     data = load_graph(*model_files(), TESTS / "sample-data.ttl")
     conforms, rows = _shacl(data)
     violations = [r for r in rows if r["severity"] == SH.Violation]
@@ -304,7 +434,7 @@ def build_sample_db() -> sqlite3.Connection:
 
 
 def check_ddl(rep: Report):
-    rep.section("5. Generated artifacts (DDL, data dictionary, glossary, sample table)")
+    rep.section("6. Generated artifacts (DDL, data dictionary, glossary, sample table)")
     import generate_ddl
     current = (DB_DIR / "schema.sql").read_text(encoding="utf-8") if (DB_DIR / "schema.sql").exists() else ""
     fresh = generate_ddl.generate()
@@ -464,7 +594,7 @@ def hand_hint(header: list[str], want: list[tuple], got: list[tuple]) -> str:
 
 
 def check_cq(rep: Report):
-    rep.section("6. Competency questions (you vs SPARQL vs SQL)")
+    rep.section("7. Competency questions (you vs SPARQL vs SQL)")
     spec = parse_cq_spec()
     g = load_graph(*model_files(), TESTS / "sample-data.ttl")
     con = build_sample_db()
@@ -510,7 +640,7 @@ def check_cq(rep: Report):
 
 # ---------------------------------------------------------------------------
 def check_loader(rep: Report):
-    rep.section("7. Loader: one occurrence = one record, latest state wins")
+    rep.section("8. Loader: one occurrence = one record, latest state wins")
     import load
     obs = TESTS / "observations"
     o1 = ((obs / "observation-1.csv").read_text(encoding="utf-8"), "2026-01-10T00:00:00")
@@ -558,6 +688,7 @@ def main():
     check_parse(rep)
     if not rep.failed:
         check_reasoner(rep)
+        check_concepts(rep)
         check_lint(rep)
         check_shacl(rep)
         check_ddl(rep)
