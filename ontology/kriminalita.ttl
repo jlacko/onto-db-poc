@@ -177,13 +177,76 @@ municipalities here. RÚIAN uses the same codes."""@en ;
     skos:scopeNote "Městská část nebo část obce. Patří sem i čtyři vojenské újezdy (Boletice, Březina, Hradiště, Libavá); podle zákona o obcích obcemi nejsou, zde se s nimi ale zachází jako s obcemi."@cs ;
     vs:term_status "draft" .
 
+krim:OrpArea
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept , gsp:Feature ;
+    rdfs:label "ORP area"@en , "správní obvod ORP"@cs ;
+    skos:altLabel "administrative district of a municipality with extended powers"@en ,
+        "ORP"@cs , "SO ORP"@cs , "správní obvod obce s rozšířenou působností"@cs ;
+    skos:exactMatch <https://slovník.gov.cz/legislativní/sbírka/111/2009/pojem/správní-obvod-obce-s-rozšířenou-působností> ;
+    skos:definition """An ORP area is a territorial unit of the Czech Republic that is the
+administrative district of a municipality with extended powers, listed in the Czech
+Statistical Office's codelist 65 and identified by its four-digit code."""@en ;
+    skos:example "Opava (code 8117), whose municipalities include Pustá Polom."@en ;
+    skos:scopeNote """Not the municipality with extended powers itself (the town of Opava
+is a municipality; the ORP area is the district its office serves), and not the
+smaller POU district, which is not modelled. Includes Prague (code 1000), which ČSÚ
+and RÚIAN list as an ORP area although Prague is not one in law. An ORP area normally
+lies within one okres; Turnov (5109) spans three."""@en ;
+    dcterms:source <https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=65> ;
+    krim:businessDefinition "Správní obvod obce s rozšířenou působností podle číselníku 65 Českého statistického úřadu: území obcí, pro které vykonává přenesenou působnost úřad jedné obce s rozšířenou působností."@cs ;
+    skos:example "Opava (kód 8117), kam patří mimo jiné Pustá Polom."@cs ;
+    skos:scopeNote "Samotná obec s rozšířenou působností (město Opava je obec, správní obvod je území, pro které její úřad pracuje) ani správní obvod obce s pověřeným obecním úřadem. Patří sem i Praha (kód 1000). Správní obvod obvykle leží v jednom okrese; Turnov (5109) zasahuje do tří."@cs ;
+    vs:term_status "draft" .
+
+krim:Okres
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept , gsp:Feature ;
+    rdfs:label "okres"@en , "okres"@cs ;
+    skos:altLabel "district (LAU 1)"@en ;
+    skos:closeMatch <https://slovník.gov.cz/legislativní/sbírka/111/2009/pojem/území-okresu> ;
+    skos:definition """An okres is a territorial unit of the Czech Republic between the
+municipality and the kraj, defined by Act 51/2020, listed in the Czech Statistical
+Office's codelist 101 and identified by its five-digit code."""@en ;
+    skos:example "Opava (code 40908, LAU 1 code CZ0805)."@en ;
+    skos:scopeNote """Not a self-governing unit, and no longer an EU statistical unit (LAU 1
+was dropped in 2017; ČSÚ keeps the codes). Not the okres of the repealed Act 36/1960,
+although most boundaries carried over. The Czech term is kept in English: "district"
+is ambiguous."""@en ;
+    dcterms:source <https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=101> ;
+    krim:businessDefinition "Okres podle zákona o územně správním členění státu (51/2020 Sb.) a číselníku 101 Českého statistického úřadu; skládá se z celých obcí a leží v jednom kraji."@cs ;
+    skos:example "Opava (kód 40908, kód LAU 1 CZ0805)."@cs ;
+    skos:scopeNote "Samosprávný celek ani správní obvod obce s rozšířenou působností; jejich hranice se téměř vždy shodují, ne však u Turnova."@cs ;
+    vs:term_status "draft" .
+
+krim:Kraj
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept , gsp:Feature ;
+    rdfs:label "kraj"@en , "kraj"@cs ;
+    skos:altLabel "region (NUTS 3)"@en , "vyšší územní samosprávný celek"@cs ;
+    skos:closeMatch <https://slovník.gov.cz/legislativní/sbírka/129/2000/pojem/kraj> ;
+    skos:definition """A kraj is a self-governing territorial unit of the Czech Republic, the
+highest level below the state, listed in the Czech Statistical Office's codelist 100,
+identified by its four-digit code and corresponding to one EU NUTS 3 region."""@en ;
+    skos:example "Moravskoslezský kraj (code 3140, NUTS CZ080)."@en ;
+    skos:scopeNote """Not one of the eight kraje of 1960, which RÚIAN still keeps, and not a
+NUTS 2 cohesion region (not modelled). Includes Prague (3018), which is governed by
+its own act (131/2000), not by the Act on kraje (129/2000). The Czech term is kept in
+English: "region" is ambiguous."""@en ;
+    dcterms:source <https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=100> ;
+    krim:businessDefinition "Kraj jako vyšší územní samosprávný celek podle číselníku 100 Českého statistického úřadu; odpovídá regionu NUTS 3."@cs ;
+    skos:example "Moravskoslezský kraj (kód 3140, NUTS CZ080)."@cs ;
+    skos:scopeNote "Kraj podle členění z roku 1960 (osm krajů) ani region soudržnosti (NUTS 2). Patří sem i hlavní město Praha (3018)."@cs ;
+    vs:term_status "draft" .
+
 # Modest axioms the reasoner can check: records and codelist concepts are
-# different kinds of things, and the three codelists do not overlap.
+# different kinds of things, and the codelists do not overlap.
 [] a owl:AllDisjointClasses ;
     owl:members ( krim:OffenceRecord krim:AnonymisationArea skos:Concept ) .
 
 [] a owl:AllDisjointClasses ;
-    owl:members ( krim:OffenceType krim:ClearanceState krim:LocationRelevance krim:Municipality ) .
+    owl:members ( krim:OffenceType krim:ClearanceState krim:LocationRelevance krim:Municipality
+                  krim:OrpArea krim:Okres krim:Kraj ) .
 
 # =====================================================================
 # Object properties
@@ -222,6 +285,33 @@ krim:inMunicipality
     rdfs:label "in municipality"@en , "v obci"@cs ;
     skos:definition "A relation that places an anonymisation area in the municipality whose territory contains it."@en ;
     skos:scopeNote "Given by the publisher's list of areas (field kod_obec); every area lies in exactly one municipality."@en ;
+    vs:term_status "draft" .
+
+krim:inOrpArea
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf gsp:sfWithin ;
+    rdfs:label "in ORP area"@en , "ve správním obvodu ORP"@cs ;
+    skos:definition "A relation that places a municipality in the ORP area whose territory contains it."@en ;
+    skos:scopeNote "Given by ČSÚ's relation between codelists 43 and 65; every municipality lies in exactly one ORP area."@en ;
+    vs:term_status "draft" .
+
+krim:inOkres
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf gsp:sfWithin ;
+    rdfs:label "in okres"@en , "v okrese"@cs ;
+    skos:definition "A relation that places a municipality in the okres whose territory contains it."@en ;
+    skos:scopeNote """Given by ČSÚ's relation between codelists 43 and 101, the one link ČSÚ maintains
+by hand. Not stated for ORP areas: that an ORP area lies within one okres is a soft rule
+checked through its municipalities (Turnov is the known exception)."""@en ;
+    vs:term_status "draft" .
+
+krim:inKraj
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf gsp:sfWithin ;
+    rdfs:label "in kraj"@en , "v kraji"@cs ;
+    skos:definition "A relation that places an ORP area or an okres in the kraj whose territory contains it."@en ;
+    skos:scopeNote """Not stated for municipalities: a municipality's kraj is reached through its ORP
+area or its okres, and both branches give the same kraj."""@en ;
     vs:term_status "draft" .
 
 # =====================================================================

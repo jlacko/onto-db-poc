@@ -224,10 +224,10 @@ as the known exception, not a constraint.
 
 ```validator
 subject: krim:OrpArea
-path:    krim:inOkres
+path:    —
 object:  krim:Okres
 count:   0..1
 inverse: 1..*
 shape:   none
-reason:  holds except for ORP Turnov, split across three okresy; a warning, not a constraint
+reason:  holds except for ORP Turnov, split across three okresy; not stated as a link, checked as a warning through the municipalities' okresy
 ```

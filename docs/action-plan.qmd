@@ -352,6 +352,14 @@ true`, `dcterms:isReplacedBy` the area and its centre, status `archaic`. A new
 lint rule requires a replacement and warns while shapes still use a deprecated
 term. Now 6 classes and 12 own properties, 2 of them deprecated.
 
+**Iteration 3** added three classes and three properties, the same pattern as
+municipality: `krim:OrpArea`, `krim:Okres` and `krim:Kraj` (codelist concepts
+and `gsp:Feature`), and `inOrpArea`, `inOkres`, `inKraj` (all `gsp:sfWithin`).
+The new classes join the disjointness axiom of the codelists. Two links are
+deliberately *not* stated: municipality to kraj (the branches give it) and ORP
+area to okres (Turnov would break it; the soft rule is checked through the
+municipalities). Now 9 classes and 15 own properties, 2 of them deprecated.
+
 ## Step 5: Definitions and annotations (L writes, H reviews)
 
 Every term carries labels in English and Czech, one genus–differentia
@@ -382,6 +390,13 @@ hidden: it is the publisher's K-means cluster centre, sometimes moved inside the
 municipality, *not* the polygon's centroid. Deprecated terms leave the Czech
 glossary (current terms only); the data dictionary lists them in an appendix
 with their replacements.
+
+**Iteration 3.** The Czech terms *okres* and *kraj* are the English labels too,
+with "district (LAU 1)" and "region (NUTS 3)" as alternative labels: the
+English words are ambiguous. The class for codelist 65 is the *area*
+(`krim:OrpArea`, "správní obvod ORP"), and its scope note says it is not the
+municipality with extended powers. Each scope note names what the reuse survey
+rejected (the 1960 kraje, the repealed okres act), so the trap stays visible.
 
 ## Step 6: Reference data (S generates, H maintains translations)
 
