@@ -128,7 +128,9 @@ Verdict: true
 Municipality means *obec*, as in the Czech Statistical Office's codelist of
 municipalities (ČSÚ codelist 43, <https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=43>);
 every area's municipality must exist in that codelist. Municipalities with few
-offences were not split and are a single area. Checked: the polygon list's
+offences were not split and are a single area. The four military training
+areas in the codelist (Boletice, Březina, Hradiště, Libavá) count as
+municipalities here, although they are not municipalities in law. Checked: the polygon list's
 6,258 municipality codes match codelist 43 one to one (6,258 items, valid on
 22 Nov 2026), so every municipality has at least one area.
 

@@ -242,6 +242,40 @@ The publisher's own IRIs were *linked*, not *adopted* as concept identifiers:
 they do not resolve, and they contain a typo (`/dowloads/`) and a version
 segment (`/v1/`), both fragile.
 
+**Iteration 2: anonymisation areas and municipalities.** Each candidate was
+checked against the vocabulary's own published file, not from memory.
+
+| Need | Reused | How |
+|---|---|---|
+| Area, municipality (classes) | GeoSPARQL (`gsp:`; `geo:` stays WGS84) | `krim:AnonymisationArea` and `krim:Municipality` are sub-classes of `gsp:Feature` |
+| Municipality (meaning) | Czech government vocabulary, *obec* (Act 128/2000, §1) | linked as a close match, not an exact one (see below) |
+| Municipality items | ČSÚ codelist 43 | a generated SKOS concept scheme, like the publisher's codelists |
+| Area lies in municipality | GeoSPARQL `sfWithin` | `krim:inMunicipality` is a sub-property |
+| Record placed in area | Dublin Core `dcterms:spatial` | `krim:inAnonymisationArea` is a sub-property (a record is not a spatial object, so not `sfWithin`) |
+| Area's centre | WGS84 `geo:lat` / `geo:long` | `krim:centreLatitude` / `centreLongitude` on the area; the record's coordinates are deprecated in their favour |
+| Area identifier | `dcterms:identifier` | the publisher's polygon id, with a local data-element name |
+| Provenance of both lists | DCAT, PROV-O | each list is a `dcat:Dataset` with source URL and date |
+
+: Reuse in iteration 2 {tbl-colwidths="[25,30,45]"}
+
+Rejected on purpose:
+
+- **GeoSPARQL `hasCentroid`.** The name fits, the definition does not: it is
+  the arithmetic mean of a geometry's points, while the publisher's centre is
+  a K-means cluster centre, sometimes moved inside the municipality.
+- **RÚIAN linked data.** The IRIs redirect to a web page, not RDF; the ČSÚ code
+  is the join key (RÚIAN uses the same municipality codes).
+- **Geometry** (`gsp:hasGeometry`, `gsp:asWKT`): the reuse is clear, but no
+  competency question needs the polygons, so they are not stored.
+
+Decided by the expert: ČSÚ codelist 43 is *"Obec a vojenský újezd"*. Its four
+military training areas (Boletice 545422, Březina 592935 near Vyškov,
+Hradiště 555177 in the Doupov hills, Libavá 503941; status checked in RÚIAN)
+are not municipalities in law (no elections, for example), but **count as
+municipalities in this proof of concept**. That is why the link to the legal
+*obec* is a close match. Municipalities are a codelist in Turtle (6,258
+items); the 39,927 areas live only in the database and the test sample.
+
 ## Step 4: Skeleton in Turtle (L)
 
 File: `ontology/kriminalita.ttl`. A lean OWL module of 4 classes and 8 own
