@@ -152,12 +152,12 @@ one of the 6,258 municipalities is in exactly one of the 206 ORPs.
 
 ```validator
 subject: krim:Municipality
-path:    krim:inOrp
-object:  krim:Orp
+path:    krim:inOrpArea
+object:  krim:OrpArea
 count:   1..1
 inverse: 1..*
 shape:   none
-reason:  not modelled yet (iteration 3); names are provisional
+reason:  not modelled yet (iteration 3)
 ```
 
 ### S9: A municipality lies in exactly one okres; an okres has one or more municipalities.
@@ -171,12 +171,12 @@ hand; the links to ORP and kraj are derived from it.
 
 ```validator
 subject: krim:Municipality
-path:    krim:inDistrict
-object:  krim:District
+path:    krim:inOkres
+object:  krim:Okres
 count:   1..1
 inverse: 1..*
 shape:   none
-reason:  not modelled yet (iteration 3); names are provisional
+reason:  not modelled yet (iteration 3)
 ```
 
 ### S10: An ORP lies in exactly one kraj; a kraj has one or more ORPs.
@@ -187,13 +187,13 @@ Kraj: NUTS 3, ČSÚ codelist 100. Checked: all 206 ORPs nest in one of the 14
 kraje.
 
 ```validator
-subject: krim:Orp
-path:    krim:inRegion
-object:  krim:Region
+subject: krim:OrpArea
+path:    krim:inKraj
+object:  krim:Kraj
 count:   1..1
 inverse: 1..*
 shape:   none
-reason:  not modelled yet (iteration 3); names are provisional
+reason:  not modelled yet (iteration 3)
 ```
 
 ### S11: An okres lies in exactly one kraj; a kraj has one or more okresy.
@@ -205,13 +205,13 @@ meet at the kraj: a municipality's kraj is the same whichever branch is
 followed. Prague is one item in each codelist (ORP, okres and kraj).
 
 ```validator
-subject: krim:District
-path:    krim:inRegion
-object:  krim:Region
+subject: krim:Okres
+path:    krim:inKraj
+object:  krim:Kraj
 count:   1..1
 inverse: 1..*
 shape:   none
-reason:  not modelled yet (iteration 3); names are provisional
+reason:  not modelled yet (iteration 3)
 ```
 
 ### S12: An ORP lies within one okres; an okres has one or more ORPs.
@@ -223,9 +223,9 @@ True for 205 of the 206 ORPs. ORP Turnov (5109) is split across three okresy
 as the known exception, not a constraint.
 
 ```validator
-subject: krim:Orp
-path:    krim:inDistrict
-object:  krim:District
+subject: krim:OrpArea
+path:    krim:inOkres
+object:  krim:Okres
 count:   0..1
 inverse: 1..*
 shape:   none

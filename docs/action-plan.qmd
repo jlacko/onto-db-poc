@@ -285,6 +285,39 @@ municipalities in this proof of concept**. That is why the link to the legal
 *obec* is a close match. Municipalities are a codelist in Turtle (6,258
 items); the 39,927 areas live only in the database and the test sample.
 
+**Iteration 3: ORP, okres and kraj.** Checked against GeoSPARQL's own source
+file, the government vocabulary's SPARQL endpoint and the EU NUTS service.
+The Czech terms are kept: "district" and "region" are ambiguous in English.
+
+| Need | Reused | How |
+|---|---|---|
+| ORP area, okres, kraj (classes) | GeoSPARQL `gsp:Feature`, SKOS | like `krim:Municipality`: `krim:OrpArea`, `krim:Okres`, `krim:Kraj` |
+| Lies in (municipality → ORP area, okres; both → kraj) | GeoSPARQL `sfWithin` | three sub-properties: `krim:inOrpArea`, `krim:inOkres`, `krim:inKraj`. `sfWithin` is not transitive, so nothing is inferred across levels; queries follow the branches |
+| The items | ČSÚ codelists 65, 101, 100 | generated SKOS concept schemes, like codelist 43 |
+| Kraj in the EU | NUTS 3 (`data.europa.eu/nuts/code/CZ080`) | `skos:exactMatch` on each kraj, from codelist 100's NUTS code; the IRI resolves to RDF and is current in every NUTS version 2003–2027 |
+| ORP area (meaning) | *správní obvod obce s rozšířenou působností*, Act 111/2009 §31(1)(f) | exact match: ČSÚ 65 carries the RÚIAN codes |
+| Okres (meaning) | *území okresu*, Act 111/2009 §31(1)(e) | close match (a territory in the register, not the unit) |
+| Kraj (meaning) | *kraj*, Act 129/2000 | close match: Prague is a kraj in codelist 100 but has its own act (131/2000) |
+
+: Reuse in iteration 3 {tbl-colwidths="[25,30,45]"}
+
+Rejected on purpose, each a case of a name that fits and a definition that does
+not:
+
+- **Kraj of Act 36/1960** and RÚIAN's *území kraje* (Act 111/2009 §31(1)(d)):
+  the eight regions of 1960, not the fourteen self-governing kraje (RÚIAN keeps
+  those apart as *VÚSC*; codelist 101 even carries a `kraj_1960` column).
+- **Okres of Act 36/1960**: the only *okres* in the vocabulary, but the act was
+  replaced by Act 51/2020 in 2021, which the vocabulary does not hold.
+- **ORP of Act 128/2000**: the *municipality* with extended powers (the town
+  of Opava), not its administrative area, which is what codelist 65 lists. The
+  class is therefore the area, `krim:OrpArea`, with "ORP" as an alternative
+  label.
+- **An EU link for okresy**: LAU 1 was dropped at EU level in 2017; ČSÚ keeps
+  the codes (`CZ0806`), NUTS does not know them.
+- **RÚIAN linked data**, as in iteration 2 (no RDF), and a direct
+  municipality → kraj property (the branches already give it).
+
 ## Step 4: Skeleton in Turtle (L)
 
 File: `ontology/kriminalita.ttl`. A lean OWL module, in iteration 1 of 4 classes
