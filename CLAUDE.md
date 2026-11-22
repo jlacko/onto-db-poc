@@ -20,7 +20,7 @@ for the API, not a template). Use the venv: `.venv/bin/python`.
 | `ontology/kriminalita.ttl` | Core OWL module: classes, properties, definitions | hand |
 | `ontology/shapes.ttl` | SHACL shapes = closed-world data rules; drive the DDL | hand |
 | `ontology/reference/codelist-texts.csv` | English labels and definitions, Czech business definitions for codelist items | hand |
-| `ontology/reference/*.ttl` | SKOS concept schemes built from the publisher's codelists | **generated** (`scripts/build_reference.py`) |
+| `ontology/reference/*.ttl` | SKOS concept schemes built from the publisher's codelists and ČSÚ's territorial codelists (43, 65, 101, 100) with their relations | **generated** (`scripts/build_reference.py`) |
 | `ontology/tests/` | Sample individuals, invalid data, CQ tests (SPARQL + SQL) | hand |
 | `db/schema.sql` | SQLite DDL incl. `meta_column` data dictionary | **generated** (`scripts/generate_ddl.py`) |
 | `db/data-dictionary.{csv,xlsx}`, `docs/data-dictionary.{qmd,pdf}` | Data dictionary exports | **generated** (`scripts/generate_dictionary.py --pdf`) |
@@ -35,10 +35,13 @@ Never hand-edit generated files; change the source and regenerate.
 - `krim:` `https://example.org/kriminalita/ontology#`: classes and properties
   (placeholder base; replace before any publication, then never change).
 - `krimc:` `https://example.org/kriminalita/code/`: codelist concepts,
-  `krimc:type/8`, `krimc:state/2`, `krimc:relevance/4`.
+  `krimc:type/8`, `krimc:state/2`, `krimc:relevance/4`, and territorial units
+  `krimc:municipality/509736`, `krimc:orp-area/8117`, `krimc:okres/40908`,
+  `krimc:kraj/3140`.
 - `kdb:` `https://example.org/kriminalita/db#`: database-mapping hints used in
   the shapes only.
-- Reused: SKOS, DCTERMS, DCAT, PROV-O, WGS84 (`geo:`), VS (term status).
+- Reused: SKOS, DCTERMS, DCAT, PROV-O, WGS84 (`geo:`), GeoSPARQL (`gsp:`), VS
+  (term status); kraje link to EU NUTS 3 IRIs.
 
 ## Naming and definition style
 

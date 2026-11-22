@@ -1,36 +1,64 @@
 # onto-db-poc
 
-Proof of concept of the **ontology-first** approach to database creation, following
-`llm-readable-ontologies.pdf`. The main aim is to validate the LLM ontology method
-itself. The secondary aim is to prove it can drive a real database: SQLite,
-populated with a continuous, duplicate-free history of Czech crime records from the Police CR API
-(`kriminalita.policie.gov.cz`).
+**The chief output of this project is a guide: [*Building and Running Ontologies
+with LLMs*](docs/guide.pdf)** (draft; source [`docs/guide.qmd`](docs/guide.qmd)).
+It describes a method for building an ontology with a large language model and
+keeping it useful to everyone who depends on it: the LLM that drafts it, the
+domain expert who judges it, the business readers who use its terms, and the
+database it drives.
 
-**Status:** ontology release 0.2.0 on `main`, tagged `v0.2.0` (iteration 2:
-anonymisation areas and municipalities); the first version is tagged `v0.1.0`.
-Terms are deprecated, not renamed or removed.
+| Part | Covers |
+|---|---|
+| I. Authoring | the sequence of steps and who does each (LLM drafts, expert decides, scripts repeat); seven practices, from stating how concepts relate to a mechanical validation loop |
+| II. Sharing | business glossary and data dictionary generated from the ontology, in the format each reader's task needs |
+| III. Ontology and data | concepts, terms and data elements; SHACL shapes as the bridge to a relational schema, physical design included; codelists versus datasets; continuous history |
+| IV. Lifecycle | releases, deprecation, and iterating on a released model |
+| Appendices | typical LLM errors; the technical stack |
 
-**Grand finale:** a standalone guide to the method (draft), written from the
-lessons learned and using this crime dataset as its worked example, with an
-appendix on the technical stack:
-[`docs/guide.qmd`](docs/guide.qmd), rendered as [`docs/guide.pdf`](docs/guide.pdf).
+Everything else in this repository exists to test and illustrate that guide.
+The method started from `llm-readable-ontologies.pdf` (an inspiration, not a
+template) and was revised by doing: every practice in the guide is drawn from
+what happened here, including what went wrong.
 
-## The sequence (adapted from PDF part I)
+## The worked example: a means to an end
+
+To test the method on real data, it was applied end to end to the offence
+records published by the Police of the Czech Republic
+(`kriminalita.policie.gov.cz`): an ontology, its validation loop, a generated
+SQLite database holding a continuous, duplicate-free history of 1.38 million
+records for 2025, a data dictionary and a Czech business glossary. The database
+proves that the ontology can drive a real data model; it is not the goal in
+itself.
+
+The example was built in three iterations, each a full pass through the method:
+
+| Release | Iteration |
+|---|---|
+| `v0.1.0` | offence records, types, clearance states, location relevance |
+| `v0.2.0` | anonymisation areas (39,927 predefined polygons) and municipalities (ČSÚ codelist 43); the record's coordinates deprecated |
+| on branch `iteration-3` | ORP areas, okresy and kraje (ČSÚ codelists 65, 101, 100); all steps done, all 29 competency questions pass, not yet released |
+
+Terms are deprecated, not renamed or removed. How each step went, and what it
+taught, is written up in two companion documents:
+[`docs/lessons-learned.pdf`](docs/lessons-learned.pdf) (the evidence behind the
+guide) and [`docs/action-plan.pdf`](docs/action-plan.pdf) (step by step, all
+three iterations).
+
+## The method as applied here
 
 | Step | Here |
 |---|---|
-| Concepts and how they relate (*our addition, not in the PDF*) | [`ontology/concepts.md`](ontology/concepts.md): seven sentences in domain language, one per relationship, both ends ("a record has one or more offence types; a type covers any number of records"), judged by the domain expert and traced to the SHACL shape that enforces it |
-| Competency questions | [`ontology/competency-questions.md`](ontology/competency-questions.md): an editable worksheet with executable `expected` answers. Some are left for the domain expert to answer by hand (✍). |
-| Reuse survey | SKOS (codelists), DCTERMS, DCAT, PROV-O, W3C WGS84, VS term status; the publisher's own codelist IRIs linked with `skos:exactMatch` |
-| Skeleton + definitions | [`ontology/kriminalita.ttl`](ontology/kriminalita.ttl): 6 classes, 12 own properties (2 deprecated), en/cs labels, genus–differentia definitions, scope notes, sources |
-| Reference data | [`ontology/reference/`](ontology/reference/): SKOS schemes generated from the publisher's JSON-LD codelists plus hand-kept English labels |
+| Concepts and how they relate | [`ontology/concepts.md`](ontology/concepts.md): twelve sentences in domain language, one per relationship, both ends ("a record has one or more offence types; a type covers any number of records"), judged by the domain expert and traced to the SHACL shape that enforces it |
+| Competency questions | [`ontology/competency-questions.md`](ontology/competency-questions.md): an editable worksheet with executable `expected` answers. Where the answer depends on a design decision, the domain expert answers by hand (✍). |
+| Reuse survey | SKOS (codelists), DCTERMS, DCAT, PROV-O, W3C WGS84, GeoSPARQL, VS term status; the publisher's codelist IRIs, the Czech government vocabulary and EU NUTS linked with `skos:exactMatch` / `closeMatch` |
+| Skeleton + definitions | [`ontology/kriminalita.ttl`](ontology/kriminalita.ttl): 9 classes, 15 own properties (2 deprecated), en/cs labels, genus–differentia definitions, scope notes, sources |
+| Reference data | [`ontology/reference/`](ontology/reference/): SKOS schemes generated from the publisher's JSON-LD codelists and ČSÚ's territorial codelists, plus hand-kept English labels |
 | Closed-world rules | [`ontology/shapes.ttl`](ontology/shapes.ttl): SHACL, every rule also stated as a plain sentence |
-| Validation loop | [`scripts/validate.py`](scripts/validate.py): parse, HermiT, concept statements vs shapes, lint, SHACL (+ negative tests), artifact drift, CQ tests |
-| Test suite | [`ontology/tests/`](ontology/tests/): 13 sample records in 16 anonymisation areas, 10 invalid individuals, 23 CQs in SPARQL and SQL |
-| Data model (part III) | [`db/schema.sql`](db/schema.sql), **generated** from the shapes |
+| Validation loop | [`scripts/validate.py`](scripts/validate.py): parse, HermiT, concept statements vs shapes, lint, SHACL (+ negative tests), artifact drift, CQ tests, loader tests |
+| Test suite | [`ontology/tests/`](ontology/tests/): 13 sample records in 16 anonymisation areas, 11 invalid individuals, 29 CQs in SQL, 27 of them also in SPARQL (SPARQL has no weekday function or calendar) |
+| Data model | [`db/schema.sql`](db/schema.sql), **generated** from the shapes |
 | Data dictionary | **generated** from ontology + shapes: `meta_column` table, [`db/data-dictionary.csv`](db/data-dictionary.csv), [`db/data-dictionary.xlsx`](db/data-dictionary.xlsx) (for review), [`docs/data-dictionary.pdf`](docs/data-dictionary.pdf) |
 | Business glossary (Czech) | **generated** from Czech annotations on the ontology: [`docs/glossary.pdf`](docs/glossary.pdf) ("Slovník pojmů"; English internals, Czech business translations) |
-| Write-ups | [`docs/action-plan.pdf`](docs/action-plan.pdf), [`docs/lessons-learned.pdf`](docs/lessons-learned.pdf) |
 
 ## Run it
 
@@ -50,8 +78,8 @@ Downloads are cached in `build/cache/zips/`; a file is fetched again only if the
 publisher has a newer version and the cached copy is older than `--max-age-days`
 (default 7). `--offline` uses the cache only. The publisher's list of
 anonymisation areas (`voronoi.geojson.zip`, a fixed file from 2022) is downloaded
-once into `build/cache/`; ČSÚ codelist 43 (municipalities) is cached there by
-`build_reference.py` and refreshed after 30 days.
+once into `build/cache/`; the ČSÚ codelists (43, 65, 101, 100) and their
+relations are cached there by `build_reference.py` and refreshed after 30 days.
 
 Regenerate the generated artifacts after changing their sources:
 
@@ -116,6 +144,28 @@ Iteration 2 (anonymisation areas and municipalities, after release 0.1.0):
     new foreign key ran for over ten minutes with no index; the generator now
     indexes every foreign-key column, plus `kdb:index` and `kdb:uniqueColumns`
     hints. A full rebuild takes under two minutes.
+
+Iteration 3 (ORP areas, okresy and kraje, from ČSÚ codelists 65, 101, 100):
+
+15. **A chain that is not a chain.** Municipality → ORP area → okres → kraj
+    looked like a nesting; ČSÚ's own relations show ORP Turnov spans three
+    okresy. The model has two branches that meet at the kraj, a hard rule that
+    both give the same kraj, and a soft rule (a warning that fires for Turnov).
+16. **Codebook facts versus design decisions.** Expected answers taken from the
+    authoritative codebook may be pre-filled; how the codebook is applied
+    (which units are listed, what is excluded) is a design decision and gets a
+    hand answer. Pre-filling those hid the question of empty units, which the
+    expert then settled as one rule: every territorial unit in scope gets a
+    number, tested without thousands of zero rows (`rows: N; others: 0`).
+17. **Three names that fit, three definitions that do not.** In the government
+    vocabulary *kraj* also names the 1960 regions, the only *okres* term comes
+    from a repealed act, and *ORP* strictly is the town, not its area.
+18. **A rule that was right but slow.** Two SPARQL rules, checked once per focus
+    node, added 90 seconds to every SHACL run; a SPARQL target that finds the
+    suspects in one query brought it back to 6.
+19. **The expert's slips, and the validator's.** Names written instead of codes,
+    and rates rounded to two places where three are compared; the first exposed a
+    validator hint that pointed the wrong way, now fixed.
 
 ## Layout
 

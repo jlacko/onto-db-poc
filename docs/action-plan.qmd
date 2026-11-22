@@ -519,9 +519,9 @@ tests.
 | 2. Reasoner | HermiT finds ontology + reference + sample data consistent, *and* finds a contradictory individual inconsistent (negative test) |
 | 3. Concepts | every sentence marked `true` in `concepts.md` is enforced by the shape it names, with the same cardinality; no shape enforces a sentence marked `false`; a true sentence not yet modelled is a warning |
 | 4. Lint | every term has en/cs labels, one definition, a status; no `rdfs:domain`/`range`; no duplicate labels; every `krim:` term used in shapes, samples and queries is declared; every property shape has a plain-language rule; every column has en/cs names, a definition and a value domain (data dictionary); every business term, code and record rule has its Czech text (glossary) |
-| 5. SHACL | sample data conforms; exactly the expected warning is raised; each negative test (including a duplicate identifier) fails *for the stated reason* |
+| 5. SHACL | reference and sample data conform; exactly the expected warnings are raised (the fictional Vienna area; ORP area Turnov, from the real reference data); each negative test (including a duplicate identifier and a municipality whose branches disagree) fails *for the stated reason* |
 | 6. Generated artifacts | `db/schema.sql`, the dictionary, the glossary, the sample CSVs and the CQ index are current; the sample loads into the schema with no FK errors |
-| 7. Competency questions | SPARQL = SQL (parity), and both = the expected answer written in the spec; for hand-answered questions a failure explains where, never the computed values (`--show-answers` prints them) |
+| 7. Competency questions | SPARQL = SQL (parity), and both = the expected answer written in the spec; for hand-answered questions a failure explains where, never the computed values (`--show-answers` prints them). An answer may list only the non-zero rows (`rows: N; others: 0`), with a self-test of that format |
 | 8. Loader | the same record observed twice, in either order, ends as one row in the latest state; reloading is idempotent; a point is matched to its area's centre (one micro-degree tolerance), and a point that is no area's centre is skipped and counted |
 
 : The validation loop {tbl-colwidths="[25,75]"}
@@ -746,7 +746,10 @@ Result for 2025:
 | records outside the Czech box / missing broader type | 0 / 0 |
 | points that are no area's centre (iteration 2) | 0 |
 | anonymisation areas loaded / holding no record | 39,927 / 5,138 |
-| municipalities | 6,258 |
+| municipalities / ORP areas / okresy / kraje (iteration 3) | 6,258 / 206 / 77 / 14 |
+| municipalities whose ORP area and okres lie in different kraje | 0 |
+| ORP areas spanning several okresy (warning) | 1 (Turnov) |
+| kraje holding no record | 0 |
 | records timestamped exactly 00:00 | 1,168 (open question for the domain expert) |
 | SHACL on 1,000 random real records (including the uniqueness rule) | conforms (24 s) |
 | database size | about 440 MB (380 MB in iteration 1; new indexes and area tables) |
@@ -762,6 +765,18 @@ rule, plus columns with a `kdb:index` hint (the report date, formerly the one
 hard-coded index) and keys with a `kdb:uniqueColumns` hint (an area's centre:
 the database counterpart of the SPARQL uniqueness rule). The schema was
 correct; its performance had not been designed.
+
+**Iteration 3.** The loader needed one change: its list of codelist tables to
+fill was written out by hand and did not include the new ones; it is now
+derived from the shapes (every table but records and areas). The quality report
+gained the branch check (0 municipalities whose ORP area and okres lie in
+different kraje), the Turnov warning (1 ORP area spanning several okresy) and
+kraje with no record (0). Load counts are unchanged. The rebuild took 3:36
+instead of 1:57, but not because of the iteration: the same SHACL sample with the
+v0.2.0 code and data took 88 s on the same day (24 s in iteration 2), and the
+new codelists add 6 s to creating the database. The cause: the laptop ran on
+battery, against mains power in iteration 2. Timings are only comparable under
+the same conditions.
 
 ## Step 14: Business glossary in Czech (S generates, H reviews the wording)
 

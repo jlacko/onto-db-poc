@@ -345,6 +345,17 @@ def quality_report(con, year: int):
             "(SELECT 1 FROM offence_record r WHERE r.area_id = a.id)",
         "records whose area is unknown (CQ23; must be 0)":
             "SELECT COUNT(*) FROM offence_record r LEFT JOIN anonymisation_area a ON a.id = r.area_id WHERE a.id IS NULL",
+        "municipalities whose ORP area and okres lie in different kraje (CQ28; must be 0)":
+            """SELECT COUNT(*) FROM municipality m JOIN orp_area p ON p.code = m.orp_area_code
+               JOIN okres o ON o.code = m.okres_code WHERE p.kraj_code <> o.kraj_code""",
+        "ORP areas spanning several okresy (warning shape; 1 expected: Turnov)":
+            "SELECT COUNT(*) FROM (SELECT orp_area_code FROM municipality GROUP BY orp_area_code "
+            "HAVING COUNT(DISTINCT okres_code) > 1)",
+        "kraje holding no record (allowed, but unlikely for a year)":
+            """SELECT COUNT(*) FROM kraj k WHERE NOT EXISTS (
+                 SELECT 1 FROM offence_record r JOIN anonymisation_area a ON a.id = r.area_id
+                 JOIN municipality m ON m.code = a.municipality_code JOIN okres o ON o.code = m.okres_code
+                 WHERE o.kraj_code = k.code)""",
         "records missing a broader type of one of their types (warning shape)":
             """SELECT COUNT(DISTINCT rt.offence_record_id) FROM offence_record_type rt
                JOIN offence_type t ON t.code = rt.offence_type_code
