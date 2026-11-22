@@ -1,6 +1,5 @@
-# CQ17 Records per municipality (the municipality of the record's area).
+# CQ17 Records per municipality, every municipality of codelist 43 (0 where none).
 SELECT ?municipality (COUNT(?r) AS ?records) WHERE {
-  ?r a krim:OffenceRecord ; krim:inAnonymisationArea ?a .
-  ?a krim:inMunicipality ?m .
-  ?m skos:notation ?municipality .
+  ?m a krim:Municipality ; skos:notation ?municipality .
+  OPTIONAL { ?a krim:inMunicipality ?m . ?r a krim:OffenceRecord ; krim:inAnonymisationArea ?a }
 } GROUP BY ?municipality

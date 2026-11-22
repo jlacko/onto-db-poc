@@ -1,6 +1,6 @@
 # Concepts and how they relate
 
-Step 1 of the method, before the competency questions. Seven sentences in
+Step 1 of the method, before the competency questions. Twelve sentences in
 domain language, one per relationship between two concepts, each with both
 ends: *how many of B for one A, and how many of A for one B*. Each takes
 seconds to judge; no technical knowledge is needed.
@@ -140,4 +140,90 @@ object:  krim:Municipality
 count:   1..1
 inverse: 1..*
 shape:   krim:AnonymisationAreaShape
+```
+
+### S8: A municipality lies in exactly one ORP; an ORP has one or more municipalities.
+
+Verdict: true
+
+ORP is the administrative area of a municipality with extended powers
+(*správní obvod obce s rozšířenou působností*, ČSÚ codelist 65). Checked: every
+one of the 6,258 municipalities is in exactly one of the 206 ORPs.
+
+```validator
+subject: krim:Municipality
+path:    krim:inOrpArea
+object:  krim:OrpArea
+count:   1..1
+inverse: 1..*
+shape:   krim:MunicipalityShape
+```
+
+### S9: A municipality lies in exactly one okres; an okres has one or more municipalities.
+
+Verdict: true
+
+Okres: LAU 1, ČSÚ codelist 101 (the Czech terms okres and kraj are used as
+they are; "district" and "region" are ambiguous in English). Checked: every
+municipality is in exactly one of the 77 okresy. ČSÚ maintains this link by
+hand; the links to ORP and kraj are derived from it.
+
+```validator
+subject: krim:Municipality
+path:    krim:inOkres
+object:  krim:Okres
+count:   1..1
+inverse: 1..*
+shape:   krim:MunicipalityShape
+```
+
+### S10: An ORP lies in exactly one kraj; a kraj has one or more ORPs.
+
+Verdict: true
+
+Kraj: NUTS 3, ČSÚ codelist 100. Checked: all 206 ORPs nest in one of the 14
+kraje.
+
+```validator
+subject: krim:OrpArea
+path:    krim:inKraj
+object:  krim:Kraj
+count:   1..1
+inverse: 1..*
+shape:   krim:OrpAreaShape
+```
+
+### S11: An okres lies in exactly one kraj; a kraj has one or more okresy.
+
+Verdict: true
+
+Checked: all 77 okresy nest in one kraj. ORP and okres are two branches that
+meet at the kraj: a municipality's kraj is the same whichever branch is
+followed. Prague is one item in each codelist (ORP, okres and kraj).
+
+```validator
+subject: krim:Okres
+path:    krim:inKraj
+object:  krim:Kraj
+count:   1..1
+inverse: 1..*
+shape:   krim:OkresShape
+```
+
+### S12: An ORP lies within one okres; an okres has one or more ORPs.
+
+Verdict: depends
+
+True for 205 of the 206 ORPs. ORP Turnov (5109) is split across three okresy
+(Semily, Liberec, Jablonec nad Nisou). A soft rule: a warning that names Turnov
+as the known exception, not a constraint.
+
+```validator
+subject: krim:OrpArea
+path:    —
+object:  krim:Okres
+count:   0..1
+inverse: 1..*
+shape:   none
+reason:  holds except for ORP Turnov, split across three okresy; not stated as a link, checked as a warning through the municipalities' okresy
 ```

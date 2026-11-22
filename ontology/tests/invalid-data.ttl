@@ -4,6 +4,8 @@
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix area:    <https://example.org/kriminalita/area/> .
+@prefix mun:     <https://example.org/kriminalita/code/municipality/> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
 
 # Negative tests: each individual breaks exactly one rule. validate.py checks
 # that SHACL reports each one (the expected violation is in the comment as
@@ -87,3 +89,9 @@ area:99902 a krim:AnonymisationArea ;          # expect: centreLatitude (same ce
 area:99903 a krim:AnonymisationArea ;          # expect: inMunicipality (missing)
     dcterms:identifier 99903 ;
     krim:centreLatitude 50.2 ; krim:centreLongitude 14.6 .
+
+mun:999901 a krim:Municipality , skos:Concept ;  # expect: inOkres (ORP area Opava is in Moravskoslezský kraj, okres Praha in Praha)
+    skos:notation 999901 ;
+    skos:prefLabel "Neexistující obec"@cs ;
+    krim:inOrpArea krimc:orp-area\/8117 ;
+    krim:inOkres krimc:okres\/40924 .

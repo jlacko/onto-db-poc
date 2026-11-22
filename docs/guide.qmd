@@ -67,7 +67,9 @@ regenerated as investigations progress.
 
 The proof of concept built a continuous history of one year: 1.38 million
 records, one row per occurrence in its latest state, each record placed in one
-of 39,927 anonymisation areas and each area in one of 6,258 municipalities.
+of 39,927 anonymisation areas and each area in one of 6,258 municipalities. A
+third iteration placed the municipalities in the higher administrative units
+(206 ORP areas, 77 okresy, 14 kraje).
 The data are small enough to reason about and real enough to contain every
 difficulty this guide discusses.
 
@@ -152,14 +154,21 @@ specification. In the example:
 
 Then make the questions executable, in four ways:
 
-- **The expert writes the expected answers by hand**, from a small sample, for
-  the key questions. The value is in the disagreements. In the example, five
+- **The expert writes the expected answers by hand** where the answer depends
+  on a design decision. The value is in the disagreements. In the example, five
   hand answers took ten disagreements to settle: three slips by the expert,
   five imprecise questions or data presentations, two faults of the validator.
   A method that treats the expert as the oracle would have "fixed" the queries
   to match a slip; one that treats the queries as the oracle would have missed
   the imprecise questions. In the second iteration, with sharper questions,
   both hand answers matched on the first try.
+- **Take reference facts from the authority; answer design decisions by hand.**
+  Which okres a municipality lies in is a fact of the statistical office's
+  codebook, and its expected answer may be filled in from that source. Which
+  units a breakdown lists, or what a rate excludes, is a decision about how the
+  codebook is applied, and the expert answers it by hand. In the example the
+  LLM pre-filled three answers of the second kind; rolling them back exposed a
+  question nobody had settled.
 - **Never show the expert the computed answer** before they commit to theirs.
   On failure, the validator says *where* an answer disagrees (missing rows,
   which columns differ) but not the values, unless asked.
@@ -170,10 +179,15 @@ Then make the questions executable, in four ways:
   returned zero burglaries without an error.
 - **Give the sample in the format of the reader's task.** For answering by
   hand, that is CSV for a spreadsheet, with helper columns (a record's
-  categories, each area's municipality), not a Markdown table. Questions that
-  depend on empty groups should say whether empty groups are listed (records
-  per area: list empty areas as 0) or omitted (records per municipality: omit
-  municipalities with no records), because the expert will ask.
+  categories, each area's municipality, okres and kraj), not a Markdown table.
+- **Decide once how empty groups appear.** The example settled on one rule for
+  every level: each territorial unit in scope gets a number, 0 included; scope
+  is the whole codelist or everything inside a named parent; a rate is the
+  exception (no denominator, no rate). To keep that answerable by hand, an
+  expected answer may list only the non-zero rows and state the size of the
+  scope (`rows: 6258; others: 0`); the validator checks that every other row is
+  0. Say which list is the universe: a sample's reference table, built for
+  other questions, is not one.
 
 A question the data cannot answer is recorded as a **known gap** with what
 closing it would take. In the example, *which municipality?* was a gap in the
@@ -237,6 +251,11 @@ Three rules came out of it:
   `skos:exactMatch`, not used as identifiers. A national register whose
   linked-data IRIs redirect to a web page is not linked at all; its code is the
   join key.
+- **Watch for one word, two meanings.** In the Czech government vocabulary
+  *kraj* also names the eight regions of 1960, the only *okres* term comes from
+  a repealed act, and *ORP* strictly means the town with extended powers, not
+  its district. Where the English word is itself ambiguous ("district",
+  "region"), keep the domain's own term as the label.
 - **Exact or close, as the domain says.** The statistical office's codelist of
   municipalities includes four military training areas, which are not
   municipalities in law. The expert decided they count as municipalities in the
@@ -275,9 +294,14 @@ Three habits make the loop trustworthy:
 - **Every generated artifact has a drift check.** The loop regenerates the
   schema, dictionary and glossary in memory and fails if the committed files
   differ. Generated files are never edited by hand.
+- **Mind the cost of a rule.** A SPARQL constraint runs once per focus node:
+  two rules over 6,258 municipalities added 90 seconds to every run. A SPARQL
+  target that selects only the suspects brought it back to 6.
 - **Don't bend the checker to fit an answer.** When the expert's answer failed
   for a missing separator, the right fix was the answer, not a more lenient
-  parser. A crashed section is reported as a failure and the others still run.
+  parser; when a later answer wrote names instead of codes, the fix was a
+  clearer hint, not a looser comparison. A crashed section is reported as a
+  failure and the others still run.
 
 The errors an LLM typically makes, and those the example added, are collected
 in Appendix A.
@@ -531,13 +555,19 @@ Errors of working from a real source with real tools, each seen in the example:
   `KDB.index` returned Python's `str.index` method instead of the IRI, and a
   mapping hint silently had no effect. Use `KDB["index"]`.
 - **Correct but slow generated code.** A schema with no index on a foreign key.
+- **Hand-written lists in code.** The loader filled a written-out list of
+  codelist tables; a new codelist was silently missing until the build failed.
+  Derive such lists from the model.
+- **Pre-filling what should be decided.** Expected answers computed by the LLM
+  where the answer depends on a design decision.
 - **Checklists that grow.** A first draft of concept statements with 21 entries
   where seven were needed.
 - **Leaking the answer.** A validator that printed the computed answer to an
   expert who had not finished theirs.
 
-Two errors were the human's, and the method should expect them: arithmetic
-slips in hand answers, and a format rule (a mandatory separator) forgotten.
+The human's errors, which the method should expect: arithmetic slips in hand
+answers, format rules forgotten (a mandatory separator, codes instead of names,
+three decimal places), and a universe taken from the wrong list.
 Neither side is the oracle.
 
 # Appendix B: The technical stack

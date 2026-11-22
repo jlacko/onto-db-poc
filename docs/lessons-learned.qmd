@@ -529,6 +529,67 @@ documentation. Lessons, in the order they arose:
    whether to parallelise the load, the answer was no: the time was in one
    query, not in a busy core.
 
+# Iteration 3: higher administrative units
+
+The aim was small: place every municipality in its ORP area, okres and kraj
+(ČSÚ codelists 65, 101 and 100). It took no new sample records and no change to
+the record, yet it produced as many lessons as iteration 2.
+
+1. **Check the structure before you name it.** The expert expected a chain
+   (municipality → ORP area → okres → kraj) and was unsure of one case. ČSÚ's
+   relation tables settled it before any modelling: every link nests except
+   ORP Turnov, which spans three okresy. The model became two branches that meet
+   at the kraj, a hard rule that both branches give the same kraj, and a soft
+   rule (a warning) that an ORP area lies in one okres. One exception in 206 is
+   a warning, not a reason to give up the rule.
+2. **Codebook facts versus design decisions.** The expert asked whether the
+   LLM could fill in the expected answers, since the codebook is authoritative.
+   The distinction that came out of it: what the codebook *says* (which okres
+   Boletice lies in, which ORP areas span okresy) may be pre-filled from the
+   source; how the codebook is *applied* (which units a breakdown lists, what is
+   excluded from a rate) is a design decision, fallible, and gets a hand
+   answer. Pre-filling the second kind skipped exactly the test that matters.
+3. **A hand answer exposed an unstated universe.** The expert's revised CQ17
+   listed two municipalities with 0 records, taken from the sample's area list.
+   That list was built for other questions; it is not a universe. The
+   discussion ended in one rule for all levels, decided by the expert: every
+   territorial unit in scope gets a number, 0 included; scope is the whole ČSÚ
+   codelist or everything inside a named parent; rates are the exception (no
+   denominator, no rate). To keep it testable by hand, the answer format gained
+   `rows: N; others: 0`: write the non-zero rows and the size of the scope (a
+   codebook fact); the validator checks the rest, and a self-test is its
+   negative test.
+4. **Reuse by definition, three more times.** In the government vocabulary,
+   *kraj* also names the eight regions of 1960 (which RÚIAN still keeps), the
+   only *okres* term comes from an act repealed in 2021, and *ORP* strictly is
+   the town with extended powers, not its district. Each would have been a
+   plausible, wrong link. NUTS 3, by contrast, linked cleanly: the IRIs resolve
+   to RDF and are stable across every NUTS version. The Czech terms *okres* and
+   *kraj* became the English labels as well: "district" and "region" are
+   ambiguous.
+5. **A correct rule can still be too slow.** The two new SPARQL rules,
+   evaluated once per focus node, added 90 seconds to every SHACL run (6,258
+   municipalities, each a query). A SPARQL *target* finds the suspects in one
+   query and checks only those: back to 6 seconds. Same lesson as the missing
+   index in iteration 2, at the rule layer instead of the schema.
+6. **Derive lists, don't write them.** The loader filled a hand-written list
+   of codelist tables, and the new ones were missing; the database build
+   failed. The list now comes from the shapes. The data dictionary had the same
+   problem in reverse (it would have listed 300 more codes); all four ČSÚ
+   codelists now get a pointer, as decided for municipalities in iteration 2.
+7. **The expert's slips taught the validator.** Two rounds of hand answers
+   failed: names written instead of codes, then a rate rounded to two places
+   where three are compared. The first showed that the hint for the new format
+   pointed the wrong way ("rows not written out are not 0" instead of "no key
+   in common"); the second that the three-place rule sat only in the general
+   instructions. Both were fixed where they belong: the hint in the validator,
+   the rule repeated in every rate question. The checker was not loosened.
+8. **Measure timings under the same conditions.** A rebuild took 3:36 against
+   1:57 in iteration 2. Running the v0.2.0 code on the same day took as long, so
+   the iteration was not the cause; the laptop was on battery this time and on
+   mains power then. The baseline run settled it before anyone went looking for
+   a regression.
+
 # Recommendations for the next version of the guide
 
 1. Add **negative tests** to practice 5: every check must be shown to fail.
@@ -559,3 +620,12 @@ documentation. Lessons, in the order they arose:
 11. In part IV, describe **iterating on a released model**: which steps to
     revisit, deprecation in every generated artifact, and when a commit may
     knowingly fail.
+12. In practice 2, separate **reference facts from design decisions**: take the
+    first from the authority, have the expert answer the second by hand.
+13. Say how to **list empty groups**: one rule for every level of a hierarchy,
+    and an answer format that states the size of the scope instead of listing
+    zeros.
+14. In practice 6, add **rule performance**: a SPARQL constraint runs once per
+    focus node; use a SPARQL target when only a few nodes can fail.
+15. Recommend **deriving every list from the model** (tables to fill, codes to
+    print) instead of writing it out in code.

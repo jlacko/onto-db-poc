@@ -310,17 +310,21 @@ def check_lint(rep: Report):
             seen[key] = t.removeprefix(ns)
 
     # Codelist concepts: Czech label required; English expected; no duplicate labels among siblings.
-    # Municipalities are proper names: no English label, and many villages share a name (the code
-    # tells them apart), so they are checked for a Czech label only.
-    names = set(model.subjects(RDF.type, KRIM.Municipality))
+    # Territorial units (municipality, ORP area, okres, kraj) are proper names: no English label, and
+    # many villages share a name (the code tells them apart), so they are checked for a Czech label only.
+    names = set().union(*(model.subjects(RDF.type, KRIM[c]) for c in ("Municipality", "OrpArea", "Okres", "Kraj")))
+    n_mun = len(set(model.subjects(RDF.type, KRIM.Municipality)))
     concepts = sorted(set(model.subjects(RDF.type, SKOS.Concept)))
     missing_cs = [c for c in concepts if not any(l.language == "cs" for l in model.objects(c, SKOS.prefLabel))]
     missing_en = [c for c in concepts if c not in names
                   and not any(l.language == "en" for l in model.objects(c, SKOS.prefLabel))]
     if names:
-        shared = len(names) - len({str(model.value(c, SKOS.prefLabel)).lower() for c in names})
-        rep.add("INFO", f"{len(names)} municipalities (proper names, no English label expected); "
-                        f"{shared} share a name with another municipality and are told apart by code")
+        # Same name within one level (two villages called Lhota); across levels it is expected (Opava).
+        shared = len(names) - len({(tuple(sorted(model.objects(c, RDF.type))),
+                                    str(model.value(c, SKOS.prefLabel)).lower()) for c in names})
+        rep.add("INFO", f"{len(names)} territorial units ({n_mun} municipalities, the rest ORP areas, okresy "
+                        f"and kraje; proper names, no English label expected); {shared} share a name with "
+                        "another unit of the same level and are told apart by code")
     concepts = [c for c in concepts if c not in names]
     rep.add("FAIL" if missing_cs else "PASS", f"{len(concepts) + len(names)} codelist concepts, {len(missing_cs)} without a Czech label")
     rep.add("WARN" if missing_en else "PASS", f"{len(missing_en)} codelist concepts without an English label")
@@ -417,16 +421,19 @@ def check_shacl(rep: Report):
             f"reference data + sample data: {len(violations)} violations")
     for v in violations:
         rep.add("FAIL", f"  {v['focus']} {v['path']}: {v['message']}")
-    expected_warn = {URIRef("https://example.org/kriminalita/area/99001")}
+    expected_warn = {URIRef("https://example.org/kriminalita/area/99001"),
+                     URIRef("https://example.org/kriminalita/code/orp-area/5109")}
     got_warn = {w["focus"] for w in warnings}
     rep.add("PASS" if got_warn == expected_warn else "FAIL",
             f"warnings raised for {sorted(str(x).rsplit('/', 2)[1] + ' ' + str(x).rsplit('/', 1)[1] for x in got_warn)} "
-            "(expected: area 99001, a fictional test area outside the Czechia box)")
+            "(expected: area 99001, a fictional test area outside the Czechia box; ORP area 5109 Turnov, "
+            "which spans three okresy, from the real reference data)")
 
     # Negative tests: each individual in invalid-data.ttl must fail for the stated reason.
     text = (TESTS / "invalid-data.ttl").read_text(encoding="utf-8")
     expect = {}
-    prefixes = {"rec": "https://example.org/kriminalita/record/", "area": "https://example.org/kriminalita/area/"}
+    prefixes = {"rec": "https://example.org/kriminalita/record/", "area": "https://example.org/kriminalita/area/",
+                "mun": "https://example.org/kriminalita/code/municipality/"}
     for m in re.finditer(r"^(\w+):(\w+) a .*# expect: (\w+)", text, re.M):
         prefix = prefixes[m.group(1)]
         expect[URIRef(prefix + m.group(2))] = m.group(3)
@@ -513,11 +520,57 @@ def parse_cq_spec() -> dict[str, dict]:
             continue
         lines = [l.strip() for l in block.group(1).strip().splitlines() if l.strip()]
         pending = any("TODO" in l for l in lines)
+        # Optional first line "rows: N; others: V": the result has exactly N rows, and every
+        # row not written out has the value V in each non-key column (e.g. every municipality
+        # is listed, the hand answer writes only the non-zero ones).
+        fill = None
+        d = re.fullmatch(r"rows:\s*(\d+)\s*;\s*others:\s*(.+)", lines[0]) if lines else None
+        if d:
+            fill = (int(d.group(1)), d.group(2).strip())
+            lines = lines[1:]
         header = [h.strip() for h in lines[0].split("|")]
         # Cells are separated by "|" (the format rule); a row without it stays one cell and fails.
         rows = [] if pending else [[c.strip() for c in l.split("|")] for l in lines[1:]]
-        spec[cq] = {"expected": rows, "header": header, "pending": pending, "hand": hand}
+        spec[cq] = {"expected": rows, "header": header, "pending": pending, "hand": hand, "fill": fill}
     return spec
+
+
+def complete(want: list[tuple], got: list[tuple], fill) -> tuple[list[tuple], list[str]]:
+    """Expand an answer written with "rows: N; others: V" to the full expected set.
+
+    Returns the expected rows (yours, plus every other result row with V in each
+    non-key column) and the problems that need no values to describe: a wrong row
+    count, and how many result rows outside your answer have a value other than V.
+    """
+    if fill is None:
+        return want, []
+    total, other = fill
+    other = norm(other)
+    keys = {r[0] for r in want}
+    rest = [r for r in got if r[0] not in keys]
+    problems = []
+    if len(got) != total:
+        problems.append(f"the result has {len(got)} rows, the answer says rows: {total}")
+    off = [r for r in rest if any(c != other for c in r[1:])]
+    if off:
+        problems.append(f"{len(off)} row(s) not written out in your answer have a value other than {other}")
+    return sorted(want + [(r[0], *[other] * (len(r) - 1)) for r in rest]), problems
+
+
+def selftest_complete() -> list[str]:
+    """Negative tests for the "rows/others" format: each case must fail, the last pass."""
+    got = [("a", "3"), ("b", "0"), ("c", "2"), ("d", "0")]
+    cases = [("a non-zero row left out", [("a", "3")], (4, "0"), False),
+             ("a wrong row count", [("a", "3"), ("c", "2")], (5, "0"), False),
+             ("a wrong written value", [("a", "3"), ("c", "1")], (4, "0"), False),
+             ("a complete answer", [("a", "3"), ("c", "2")], (4, "0"), True)]
+    errors = []
+    for name, want, fill, ok in cases:
+        exp, problems = complete(sorted(want), got, fill)
+        passed = exp == got and not problems
+        if passed != ok:
+            errors.append(f"{name}: {'passed' if passed else 'failed'}, expected to {'pass' if ok else 'fail'}")
+    return errors
 
 
 def norm(v) -> str:
@@ -623,6 +676,10 @@ def check_cq(rep: Report):
     g = load_graph(*model_files(), TESTS / "sample-data.ttl")
     con = build_sample_db()
     cq_dir = TESTS / "cq"
+    errors = selftest_complete()
+    rep.add("FAIL" if errors else "PASS", "expected-block format 'rows: N; others: V': "
+            + ("; ".join(errors) if errors else "a left-out non-zero row, a wrong row count and a wrong value "
+               "each fail; a complete answer passes"))
     for cq in sorted(spec):
         exp = spec[cq]
         rq, sq = cq_dir / f"{cq}.rq", cq_dir / f"{cq}.sql"
@@ -654,12 +711,20 @@ def check_cq(rep: Report):
             rep.add("PENDING", f"{cq}: waiting for your answer in competency-questions.md "
                                f"({layers} agree on {len(got)} row(s))")
             continue
-        want = as_set(exp["expected"])
-        if got == want:
+        want, problems = complete(as_set(exp["expected"]), got, exp.get("fill"))
+        if got == want and not problems:
             rep.add("PASS", f"{cq}: {layers} match the expected answer ({len(got)} row(s))")
         else:
             if exp.get("hand") and not SHOW_ANSWERS:
-                rep.add("FAIL", f"{cq}: your answer differs from {layers}\n" + hand_hint(exp["header"], want, got))
+                mine = as_set(exp["expected"])
+                keys = {r[0] for r in mine}
+                if exp.get("fill") and keys & {r[0] for r in got}:
+                    hint = hand_hint(exp["header"], mine, [r for r in got if r[0] in keys])
+                else:  # no row key in common (e.g. names written instead of codes): say so first
+                    problems = [x for x in problems if "not written out" not in x]
+                    hint = hand_hint(exp["header"], mine, got)
+                rep.add("FAIL", f"{cq}: your answer differs from {layers}\n"
+                        + "".join(f"      {x}\n" for x in problems) + hint)
             else:
                 rep.add("FAIL", f"{cq}: {layers} differ from the expected answer\n"
                                 f"      expected {want}\n      got      {got}")

@@ -1,4 +1,4 @@
-"""Build SKOS concept schemes from the publisher's codelists and ČSÚ codelist 43.
+"""Build SKOS concept schemes from the publisher's codelists and ČSÚ codelists.
 
 Source: the Police CR API publishes each codelist as JSON-LD in the Czech
 open-data codelist format (OFN "číselník"), with an IRI per item. This script
@@ -6,9 +6,12 @@ turns them into SKOS, adds the hand-maintained English labels and definitions
 from ontology/reference/codelist-texts.csv (English labels and definitions, Czech
 business definitions), and writes one Turtle file per scheme.
 
-Municipalities come from the Czech Statistical Office's codelist 43 ("Obec a
-vojenský újezd"), downloaded as CSV. The download is cached in build/cache with a
-.updated stamp and reused for MAX_AGE_DAYS; --offline never downloads.
+Territorial units come from the Czech Statistical Office (ČSÚ): codelist 43
+(municipalities and military training areas), 65 (ORP areas), 101 (okresy) and
+100 (kraje), and ČSÚ's relations between them (municipality -> ORP area, okres;
+ORP area, okres -> kraj), all downloaded as CSV. Each download is cached in
+build/cache with a .updated stamp and reused for MAX_AGE_DAYS; --offline never
+downloads.
 
     .venv/bin/python scripts/build_reference.py [--offline]
 """
@@ -48,28 +51,98 @@ def fetch(name: str, offline: bool) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-CZSO_PAGE = "https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=43"
-CZSO_EXPORT = "https://apl2.czso.cz/iSMS/do_cis_export?" + urllib.parse.urlencode(
-    {"kodcis": 43, "typdat": 0, "cisjaz": 203, "format": 2})  # CSV, Czech, valid today
+CZSO = "https://apl2.czso.cz/iSMS/"
 MAX_AGE_DAYS = 30
+# ČSÚ relation ids (the "cisvaz" export parameter): (from, to) -> id
+CZSO_RELATIONS = {(43, 65): "65_1182", (43, 101): "101_333", (65, 100): "100_398", (101, 100): "100_132"}
+NUTS = "http://data.europa.eu/nuts/code/"
 
 
-def fetch_czso(offline: bool) -> list[dict]:
-    """ČSÚ codelist 43 as rows; downloaded at most once per MAX_AGE_DAYS."""
+def czso_page(kodcis: int) -> str:
+    return f"{CZSO}cisdet.jsp?kodcis={kodcis}"
+
+
+def _fresh(stamp) -> bool:
+    if not stamp.exists():
+        return False
+    when = datetime.fromisoformat(stamp.read_text().strip())
+    if when.tzinfo is None:
+        when = when.astimezone()
+    return datetime.now().astimezone() - when < timedelta(days=MAX_AGE_DAYS)
+
+
+def fetch_czso(kodcis: int, offline: bool, to: int | None = None) -> list[dict]:
+    """A ČSÚ codelist (or, with `to`, its relation to another codelist) as rows;
+    downloaded at most once per MAX_AGE_DAYS."""
     CACHE.mkdir(parents=True, exist_ok=True)
-    path, stamp = CACHE / "czso-43.csv", CACHE / "czso-43.csv.updated"
-    fresh = path.exists() and stamp.exists() and (
-        datetime.now().astimezone() - datetime.fromisoformat(stamp.read_text().strip()) < timedelta(days=MAX_AGE_DAYS))
+    name = f"czso-{kodcis}.csv" if to is None else f"czso-{kodcis}-{to}.csv"
+    path, stamp = CACHE / name, CACHE / f"{name}.updated"
     if not path.exists() and offline:
-        sys.exit("czso-43.csv is not cached; run once without --offline")
-    if not offline and not fresh:
-        with urllib.request.urlopen(CZSO_EXPORT, timeout=60) as r:
+        sys.exit(f"{name} is not cached; run once without --offline")
+    if not offline and not (path.exists() and _fresh(stamp)):
+        query = {"kodcis": kodcis, "typdat": 0, "cisjaz": 203, "format": 2}  # CSV, Czech, valid today
+        if to is not None:
+            query.update(typdat=1, cisvaz=CZSO_RELATIONS[(kodcis, to)])
+        with urllib.request.urlopen(f"{CZSO}do_cis_export?" + urllib.parse.urlencode(query), timeout=60) as r:
             path.write_bytes(r.read())
         stamp.write_text(datetime.now().astimezone().isoformat(timespec="seconds") + "\n")
     return list(csv.DictReader(io.StringIO(path.read_text(encoding="utf-8"))))
 
 
-def build_municipalities(rows: list[dict], texts: dict) -> Graph:
+def czso_links(kodcis: int, to: int, offline: bool) -> dict[int, int]:
+    """{code in kodcis: code in `to`}; fails if an item has more than one."""
+    links = {}
+    for r in fetch_czso(kodcis, offline, to):
+        a, b = int(r["chodnota1"]), int(r["chodnota2"])
+        if links.setdefault(a, b) != b:
+            sys.exit(f"ČSÚ relation {kodcis} -> {to}: item {a} has two targets ({links[a]}, {b})")
+    return links
+
+
+# Territorial codelists other than municipalities: file, class, slug, labels, definition.
+UNITS = {
+    65: ("orp-areas", "OrpArea", "orp-area", "ORP areas", "správní obvody ORP",
+         "The Czech Statistical Office's codelist of administrative districts of municipalities "
+         "with extended powers (ČSÚ codelist 65)."),
+    101: ("okresy", "Okres", "okres", "okresy", "okresy",
+          "The Czech Statistical Office's codelist of okresy (LAU 1, ČSÚ codelist 101)."),
+    100: ("kraje", "Kraj", "kraj", "kraje", "kraje",
+          "The Czech Statistical Office's codelist of kraje (NUTS 3, ČSÚ codelist 100)."),
+}
+
+
+def build_units(kodcis: int, rows: list[dict], kraj_of: dict[int, int] | None) -> Graph:
+    """ORP areas, okresy or kraje as a SKOS scheme; ORP areas and okresy link to their kraj,
+    kraje to their NUTS 3 region. ČSÚ's Extra-Regio item (no territory) is left out."""
+    _, cls, slug, label_en, label_cs, definition = UNITS[kodcis]
+    g = bind(Graph())
+    scheme = KRIMC[slug]
+    g.add((scheme, RDF.type, SKOS.ConceptScheme))
+    g.add((scheme, SKOS.prefLabel, Literal(label_en, lang="en")))
+    g.add((scheme, SKOS.prefLabel, Literal(label_cs, lang="cs")))
+    g.add((scheme, SKOS.definition, Literal(definition, lang="en")))
+    g.add((scheme, DCTERMS.source, URIRef(czso_page(kodcis))))
+    for row in rows:
+        if row.get("cznuts", "").startswith("CZZZ"):
+            continue  # Extra-Regio
+        code = int(row["chodnota"])
+        c = KRIMC[f"{slug}/{code}"]
+        g.add((c, RDF.type, SKOS.Concept))
+        g.add((c, RDF.type, KRIM[cls]))
+        g.add((c, SKOS.inScheme, scheme))
+        g.add((c, SKOS.topConceptOf, scheme))
+        g.add((c, SKOS.notation, Literal(code, datatype=XSD.integer)))
+        g.add((c, SKOS.prefLabel, Literal(row["text"].strip(), lang="cs")))
+        g.add((c, VS.term_status, Literal("stable")))
+        if kraj_of is not None:
+            g.add((c, KRIM.inKraj, KRIMC[f"kraj/{kraj_of[code]}"]))
+        if kodcis == 100:
+            g.add((c, SKOS.exactMatch, URIRef(NUTS + row["cznuts"])))
+    return g
+
+
+def build_municipalities(rows: list[dict], texts: dict, orp_of: dict[int, int],
+                         okres_of: dict[int, int]) -> Graph:
     g = bind(Graph())
     scheme = KRIMC["municipality"]
     g.add((scheme, RDF.type, SKOS.ConceptScheme))
@@ -78,7 +151,7 @@ def build_municipalities(rows: list[dict], texts: dict) -> Graph:
     g.add((scheme, SKOS.definition, Literal(
         "The Czech Statistical Office's codelist of municipalities and military training areas (ČSÚ codelist 43).",
         lang="en")))
-    g.add((scheme, DCTERMS.source, URIRef(CZSO_PAGE)))
+    g.add((scheme, DCTERMS.source, URIRef(czso_page(43))))
     for row in rows:
         code = int(row["chodnota"])
         c = KRIMC[f"municipality/{code}"]
@@ -94,6 +167,8 @@ def build_municipalities(rows: list[dict], texts: dict) -> Graph:
         if bdef:
             g.add((c, KRIM.businessDefinition, Literal(bdef, lang="cs")))
         g.add((c, VS.term_status, Literal("stable")))
+        g.add((c, KRIM.inOrpArea, KRIMC[f"orp-area/{orp_of[code]}"]))
+        g.add((c, KRIM.inOkres, KRIMC[f"okres/{okres_of[code]}"]))
     return g
 
 
@@ -169,11 +244,17 @@ def main():
         header = f"# GENERATED by scripts/build_reference.py from {API}/{name}.json - do not edit.\n"
         out.write_text(header + g.serialize(format="turtle"), encoding="utf-8")
         print(f"{out.relative_to(REF.parent.parent)}: {len(g)} triples")
-    g = build_municipalities(fetch_czso(offline), en)
-    out = REF / "municipalities.ttl"
-    header = f"# GENERATED by scripts/build_reference.py from ČSÚ codelist 43 ({CZSO_PAGE}) - do not edit.\n"
-    out.write_text(header + g.serialize(format="turtle"), encoding="utf-8")
-    print(f"{out.relative_to(REF.parent.parent)}: {len(g)} triples")
+    graphs = {"municipalities": (43, build_municipalities(
+        fetch_czso(43, offline), en, czso_links(43, 65, offline), czso_links(43, 101, offline)))}
+    for kodcis, (file, *_) in UNITS.items():
+        kraj_of = czso_links(kodcis, 100, offline) if kodcis != 100 else None
+        graphs[file] = (kodcis, build_units(kodcis, fetch_czso(kodcis, offline), kraj_of))
+    for file, (kodcis, g) in graphs.items():
+        out = REF / f"{file}.ttl"
+        header = (f"# GENERATED by scripts/build_reference.py from ČSÚ codelist {kodcis} "
+                  f"({czso_page(kodcis)}) - do not edit.\n")
+        out.write_text(header + g.serialize(format="turtle"), encoding="utf-8")
+        print(f"{out.relative_to(REF.parent.parent)}: {len(g)} triples")
 
 
 if __name__ == "__main__":

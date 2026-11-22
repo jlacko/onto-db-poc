@@ -285,6 +285,39 @@ municipalities in this proof of concept**. That is why the link to the legal
 *obec* is a close match. Municipalities are a codelist in Turtle (6,258
 items); the 39,927 areas live only in the database and the test sample.
 
+**Iteration 3: ORP, okres and kraj.** Checked against GeoSPARQL's own source
+file, the government vocabulary's SPARQL endpoint and the EU NUTS service.
+The Czech terms are kept: "district" and "region" are ambiguous in English.
+
+| Need | Reused | How |
+|---|---|---|
+| ORP area, okres, kraj (classes) | GeoSPARQL `gsp:Feature`, SKOS | like `krim:Municipality`: `krim:OrpArea`, `krim:Okres`, `krim:Kraj` |
+| Lies in (municipality → ORP area, okres; both → kraj) | GeoSPARQL `sfWithin` | three sub-properties: `krim:inOrpArea`, `krim:inOkres`, `krim:inKraj`. `sfWithin` is not transitive, so nothing is inferred across levels; queries follow the branches |
+| The items | ČSÚ codelists 65, 101, 100 | generated SKOS concept schemes, like codelist 43 |
+| Kraj in the EU | NUTS 3 (`data.europa.eu/nuts/code/CZ080`) | `skos:exactMatch` on each kraj, from codelist 100's NUTS code; the IRI resolves to RDF and is current in every NUTS version 2003–2027 |
+| ORP area (meaning) | *správní obvod obce s rozšířenou působností*, Act 111/2009 §31(1)(f) | exact match: ČSÚ 65 carries the RÚIAN codes |
+| Okres (meaning) | *území okresu*, Act 111/2009 §31(1)(e) | close match (a territory in the register, not the unit) |
+| Kraj (meaning) | *kraj*, Act 129/2000 | close match: Prague is a kraj in codelist 100 but has its own act (131/2000) |
+
+: Reuse in iteration 3 {tbl-colwidths="[25,30,45]"}
+
+Rejected on purpose, each a case of a name that fits and a definition that does
+not:
+
+- **Kraj of Act 36/1960** and RÚIAN's *území kraje* (Act 111/2009 §31(1)(d)):
+  the eight regions of 1960, not the fourteen self-governing kraje (RÚIAN keeps
+  those apart as *VÚSC*; codelist 101 even carries a `kraj_1960` column).
+- **Okres of Act 36/1960**: the only *okres* in the vocabulary, but the act was
+  replaced by Act 51/2020 in 2021, which the vocabulary does not hold.
+- **ORP of Act 128/2000**: the *municipality* with extended powers (the town
+  of Opava), not its administrative area, which is what codelist 65 lists. The
+  class is therefore the area, `krim:OrpArea`, with "ORP" as an alternative
+  label.
+- **An EU link for okresy**: LAU 1 was dropped at EU level in 2017; ČSÚ keeps
+  the codes (`CZ0806`), NUTS does not know them.
+- **RÚIAN linked data**, as in iteration 2 (no RDF), and a direct
+  municipality → kraj property (the branches already give it).
+
 ## Step 4: Skeleton in Turtle (L)
 
 File: `ontology/kriminalita.ttl`. A lean OWL module, in iteration 1 of 4 classes
@@ -319,6 +352,14 @@ true`, `dcterms:isReplacedBy` the area and its centre, status `archaic`. A new
 lint rule requires a replacement and warns while shapes still use a deprecated
 term. Now 6 classes and 12 own properties, 2 of them deprecated.
 
+**Iteration 3** added three classes and three properties, the same pattern as
+municipality: `krim:OrpArea`, `krim:Okres` and `krim:Kraj` (codelist concepts
+and `gsp:Feature`), and `inOrpArea`, `inOkres`, `inKraj` (all `gsp:sfWithin`).
+The new classes join the disjointness axiom of the codelists. Two links are
+deliberately *not* stated: municipality to kraj (the branches give it) and ORP
+area to okres (Turnov would break it; the soft rule is checked through the
+municipalities). Now 9 classes and 15 own properties, 2 of them deprecated.
+
 ## Step 5: Definitions and annotations (L writes, H reviews)
 
 Every term carries labels in English and Czech, one genus–differentia
@@ -350,6 +391,13 @@ municipality, *not* the polygon's centroid. Deprecated terms leave the Czech
 glossary (current terms only); the data dictionary lists them in an appendix
 with their replacements.
 
+**Iteration 3.** The Czech terms *okres* and *kraj* are the English labels too,
+with "district (LAU 1)" and "region (NUTS 3)" as alternative labels: the
+English words are ambiguous. The class for codelist 65 is the *area*
+(`krim:OrpArea`, "správní obvod ORP"), and its scope note says it is not the
+municipality with extended powers. Each scope note names what the reuse survey
+rejected (the 1960 kraje, the repealed okres act), so the trap stays visible.
+
 ## Step 6: Reference data (S generates, H maintains translations)
 
 `scripts/build_reference.py` downloads the three JSON-LD codelists and writes
@@ -367,6 +415,18 @@ carry a definition from `codelist-texts.csv`. Municipality names are proper
 names, so the lint expects no English label and reports shared names (912) as
 information, not as duplicates. The 39,927 areas are not in Turtle: they are a
 dataset, not a codelist, and live only in the database and the test sample.
+
+**Iteration 3.** Three more ČSÚ codelists, each a generated scheme:
+`orp-areas.ttl` (206, codelist 65), `okresy.ttl` (77, codelist 101) and
+`kraje.ttl` (14, codelist 100); the Extra-Regio item of 101 and 100 has no
+territory and is left out. The links come from ČSÚ's own relations between
+codelists, downloaded and cached like the codelists: municipality → ORP area and
+okres (43–65, 43–101) on each municipality; ORP area and okres → kraj (65–100,
+101–100). The builder stops if an item has two targets. Each kraj carries
+`skos:exactMatch` to its NUTS 3 IRI. All territorial units are proper names, so
+the lint expects Czech labels only and counts shared names within one level
+(still 912, all municipalities: Opava as a municipality, an ORP area and an
+okres is not a clash).
 
 ## Step 7: SHACL shapes (L writes, H reviews the sentences)
 
@@ -399,6 +459,22 @@ the shared codelist shape, because there is no linked-data IRI to match. This
 step was committed with validation **knowingly failing**: the sample data still
 had coordinates, so SHACL, the sample load and the CQ tests failed until Step 8.
 
+**Iteration 3.** The municipality shape gained exactly one ORP area and one
+okres; new shapes for the ORP area, okres (each in exactly one kraj) and kraj
+(exactly one NUTS 3 IRI), each with its own data-element names, as for
+municipalities. Two SPARQL rules: the **hard** one, a municipality's ORP area and
+okres lie in the same kraj (with a negative test: a fictional municipality in
+ORP Opava and okres Praha); the **soft** one, an ORP area's municipalities lie in
+one okres, a warning that fires for Turnov from the real reference data and is
+now an expected warning. All four concept sentences S8–S11 now trace to a shape.
+
+Both rules first ran per focus node and added about 90 seconds to every SHACL
+run (one SPARQL query per municipality). A SPARQL *target* finds the suspects in
+one query and checks only those: back to 6 seconds. No sample changes were
+needed, so validation passed at this step. The loader's list of codelist tables
+is now derived from the shapes instead of written out, and the data dictionary
+points to all four ČSÚ codelists instead of listing them.
+
 ## Step 8: Test suite (L builds, H answers CQs)
 
 | File | Content |
@@ -420,6 +496,17 @@ list). Three negative tests for areas were added (centre out of range, shared
 centre, missing municipality); the sample CSVs gained area and municipality
 columns and `sample-areas.csv`.
 
+**Iteration 3.** No new sample individuals: the records already sit in five
+municipalities across four kraje, and the higher units come from the full
+reference data. `sample-records.csv` gained ORP area, okres and kraj (code and
+name). Queries for CQ24–CQ29 follow the okres branch to the kraj in both layers
+(the kraj rule makes the ORP branch equivalent). CQ27–CQ29 pass from reference
+data; CQ24–CQ26 wait for the expert's hand answers, both layers already agreeing.
+One negative test was added in Step 7 (a municipality whose branches disagree).
+With 6,555 territorial units in the reference data, a full validation run now
+takes about 80 seconds, spread over the reasoner, SHACL, the CQs and the loader
+tests.
+
 ## Step 9: Validation loop (S; run after every change)
 
 ```bash
@@ -432,9 +519,9 @@ columns and `sample-areas.csv`.
 | 2. Reasoner | HermiT finds ontology + reference + sample data consistent, *and* finds a contradictory individual inconsistent (negative test) |
 | 3. Concepts | every sentence marked `true` in `concepts.md` is enforced by the shape it names, with the same cardinality; no shape enforces a sentence marked `false`; a true sentence not yet modelled is a warning |
 | 4. Lint | every term has en/cs labels, one definition, a status; no `rdfs:domain`/`range`; no duplicate labels; every `krim:` term used in shapes, samples and queries is declared; every property shape has a plain-language rule; every column has en/cs names, a definition and a value domain (data dictionary); every business term, code and record rule has its Czech text (glossary) |
-| 5. SHACL | sample data conforms; exactly the expected warning is raised; each negative test (including a duplicate identifier) fails *for the stated reason* |
+| 5. SHACL | reference and sample data conform; exactly the expected warnings are raised (the fictional Vienna area; ORP area Turnov, from the real reference data); each negative test (including a duplicate identifier and a municipality whose branches disagree) fails *for the stated reason* |
 | 6. Generated artifacts | `db/schema.sql`, the dictionary, the glossary, the sample CSVs and the CQ index are current; the sample loads into the schema with no FK errors |
-| 7. Competency questions | SPARQL = SQL (parity), and both = the expected answer written in the spec; for hand-answered questions a failure explains where, never the computed values (`--show-answers` prints them) |
+| 7. Competency questions | SPARQL = SQL (parity), and both = the expected answer written in the spec; for hand-answered questions a failure explains where, never the computed values (`--show-answers` prints them). An answer may list only the non-zero rows (`rows: N; others: 0`), with a self-test of that format |
 | 8. Loader | the same record observed twice, in either order, ends as one row in the latest state; reloading is idempotent; a point is matched to its area's centre (one micro-degree tolerance), and a point that is no area's centre is skipped and counted |
 
 : The validation loop {tbl-colwidths="[25,75]"}
@@ -593,7 +680,7 @@ One example row, as it appears in the dictionary:
 | Value domain | code from codelist clearance_state (4 values, see appendix) |
 | Cardinality, key | 1..1, FK to `clearance_state(code)` |
 | Business rule | Every offence record has exactly one clearance state. |
-| Source field, status, release | `state`, draft, 0.2.0 |
+| Source field, status, release | `state`, draft, 0.3.0 |
 
 : One data element {tbl-colwidths="[28,72]"}
 
@@ -659,7 +746,10 @@ Result for 2025:
 | records outside the Czech box / missing broader type | 0 / 0 |
 | points that are no area's centre (iteration 2) | 0 |
 | anonymisation areas loaded / holding no record | 39,927 / 5,138 |
-| municipalities | 6,258 |
+| municipalities / ORP areas / okresy / kraje (iteration 3) | 6,258 / 206 / 77 / 14 |
+| municipalities whose ORP area and okres lie in different kraje | 0 |
+| ORP areas spanning several okresy (warning) | 1 (Turnov) |
+| kraje holding no record | 0 |
 | records timestamped exactly 00:00 | 1,168 (open question for the domain expert) |
 | SHACL on 1,000 random real records (including the uniqueness rule) | conforms (24 s) |
 | database size | about 440 MB (380 MB in iteration 1; new indexes and area tables) |
@@ -675,6 +765,18 @@ rule, plus columns with a `kdb:index` hint (the report date, formerly the one
 hard-coded index) and keys with a `kdb:uniqueColumns` hint (an area's centre:
 the database counterpart of the SPARQL uniqueness rule). The schema was
 correct; its performance had not been designed.
+
+**Iteration 3.** The loader needed one change: its list of codelist tables to
+fill was written out by hand and did not include the new ones; it is now
+derived from the shapes (every table but records and areas). The quality report
+gained the branch check (0 municipalities whose ORP area and okres lie in
+different kraje), the Turnov warning (1 ORP area spanning several okresy) and
+kraje with no record (0). Load counts are unchanged. The rebuild took 3:36
+instead of 1:57, but not because of the iteration: the same SHACL sample with the
+v0.2.0 code and data took 88 s on the same day (24 s in iteration 2), and the
+new codelists add 6 s to creating the database. The cause: the laptop ran on
+battery, against mains power in iteration 2. Timings are only comparable under
+the same conditions.
 
 ## Step 14: Business glossary in Czech (S generates, H reviews the wording)
 
@@ -740,6 +842,8 @@ CQ06, open question 5).
 
 1. ~~Iteration 2: anonymisation areas and municipalities~~ (done: Steps 1–14,
    all 23 competency questions pass; released as 0.2.0, tagged `v0.2.0`).
+1. ~~Iteration 3: ORP areas, okresy and kraje~~ (done: Steps 1–14, all 29
+   competency questions pass; released as 0.3.0, tagged `v0.3.0`).
 2. ~~Answer the five pending CQs~~ (done: all pass; see Step 2).
 3. **Resolve the six open questions** (H), then update definitions; the
    `mp` editorial note goes once the publisher confirms.

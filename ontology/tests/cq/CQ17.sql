@@ -1,3 +1,5 @@
-SELECT a.municipality_code AS municipality, COUNT(*) AS records
-FROM offence_record r JOIN anonymisation_area a ON a.id = r.area_id
-GROUP BY a.municipality_code;
+SELECT m.code AS municipality, COUNT(r.id) AS records
+FROM municipality m
+LEFT JOIN anonymisation_area a ON a.municipality_code = m.code
+LEFT JOIN offence_record r ON r.area_id = a.id
+GROUP BY m.code;
