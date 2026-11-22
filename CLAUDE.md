@@ -70,6 +70,8 @@ Never hand-edit generated files; change the source and regenerate.
 - Reference data (codelists) are SKOS concept schemes; operational data (offence
   records) live only in the database and in small test samples.
 - Deprecate, never delete: `owl:deprecated true` + `dcterms:isReplacedBy`.
+  Deprecated terms leave the Czech business glossary (current terms only); the
+  data dictionary lists them in an appendix with their replacements.
 - Bump `owl:versionInfo` / `owl:versionIRI` in `kriminalita.ttl` for every
   release (semver: major = shape tightened or meaning changed; minor = new term;
   patch = label or definition fix).

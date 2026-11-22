@@ -67,8 +67,10 @@ def cs(g, s, p):
 # --------------------------------------------------------------------------- terms
 def glossary_terms(ctx):
     g = ctx.onto
+    # current terms only: deprecated ones stay in the ontology and the data dictionary
     terms = [t for t in g.subjects(KRIM.businessDefinition, None)
-             if str(t).startswith(str(KRIM)) and (t, RDF.type, OWL.AnnotationProperty) not in g]
+             if str(t).startswith(str(KRIM)) and (t, RDF.type, OWL.AnnotationProperty) not in g
+             and (t, OWL.deprecated, Literal(True)) not in g]
     return sorted(set(terms), key=lambda t: czech_key(cs(g, t, RDFS.label) or ""))
 
 
@@ -95,7 +97,8 @@ def terms_table(ctx) -> list[str]:
         en = lang_value(g, t, RDFS.label, "en")
         where = links.get(str(t), [])
         ref = f"*{esc(en)}*" + ("; " + ", ".join(breakable(w) for w in where) if where else "")
-        o.append(f"| **{esc(cs(g, t, RDFS.label))}** | {esc(cs(g, t, KRIM.businessDefinition))} | "
+        meaning = esc(cs(g, t, KRIM.businessDefinition))
+        o.append(f"| **{esc(cs(g, t, RDFS.label))}** | {meaning} | "
                  f"{esc(cs(g, t, SKOS.example) or '')} | {esc(cs(g, t, SKOS.scopeNote) or '')} | {esc(alt)} | {ref} |")
     o += ["", ': Pojmy {tbl-colwidths="[13,24,13,24,8,18]"}', ""]
     return o

@@ -33,7 +33,7 @@ from pathlib import Path
 
 from pyshacl import validate as shacl_validate
 from rdflib import RDF, RDFS, OWL, SKOS, Graph, Literal, URIRef
-from rdflib.namespace import SH
+from rdflib.namespace import DCTERMS, SH
 
 from common import BUILD, DB_DIR, KRIM, ONTO, REF, TESTS, VS, bind, load_graph, model_files
 
@@ -270,6 +270,7 @@ def check_lint(rep: Report):
     onto = load_graph(ONTO / "kriminalita.ttl")
     model = load_graph(*model_files())
     ns = str(KRIM)
+    shapes_graph = load_graph(ONTO / "shapes.ttl")
 
     terms = sorted({s for s in onto.subjects(RDF.type, None)
                     if isinstance(s, URIRef) and str(s).startswith(ns)})
@@ -287,6 +288,11 @@ def check_lint(rep: Report):
             rep.add("WARN", f"krim:{name} definition is not in genus-differentia form ('A ... is a ...')")
         if onto.value(t, VS.term_status) is None:
             rep.add("FAIL", f"krim:{name} has no vs:term_status"); problems += 1
+        if (t, OWL.deprecated, Literal(True)) in onto:
+            if onto.value(t, DCTERMS.isReplacedBy) is None:
+                rep.add("FAIL", f"krim:{name} is deprecated but names no replacement (dcterms:isReplacedBy)"); problems += 1
+            if (None, SH.path, t) in shapes_graph:
+                rep.add("WARN", f"krim:{name} is deprecated but the shapes still use it")
         if (t, RDFS.domain, None) in onto or (t, RDFS.range, None) in onto:
             rep.add("FAIL", f"krim:{name} uses rdfs:domain/range (policy: constraints belong in SHACL)"); problems += 1
         if onto.value(t, SKOS.editorialNote) is not None:

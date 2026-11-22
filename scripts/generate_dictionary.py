@@ -15,7 +15,24 @@ import subprocess
 import sys
 
 from common import DB_DIR, ROOT
-from dictionary import FIELDS, build_rows, codelists, context, curie, table_definitions
+from rdflib import OWL, RDFS, SKOS, Literal
+from rdflib.namespace import DCTERMS
+
+from dictionary import FIELDS, build_rows, clean, codelists, context, curie, lang_value, table_definitions
+
+
+def deprecated_terms(ctx, rows) -> list[dict]:
+    """Deprecated ontology terms, their replacements, and whether a column still realises them."""
+    g, out = ctx.onto, []
+    used = {r["property_iri"] for r in rows}
+    for t in sorted(g.subjects(OWL.deprecated, Literal(True)), key=str):
+        out.append({
+            "term": curie(t), "label_en": lang_value(g, t, RDFS.label, "en"),
+            "replaced_by": ", ".join(sorted(curie(r) for r in g.objects(t, DCTERMS.isReplacedBy))),
+            "note": clean(lang_value(g, t, SKOS.editorialNote, "en")),
+            "column": ", ".join(f"{r['table_name']}.{r['column_name']}" for r in rows if r["property_iri"] == str(t)),
+        })
+    return out
 
 DOCS = ROOT / "docs"
 
@@ -63,6 +80,11 @@ def to_xlsx(rows, codes, ctx, path):
           [[name, i["code"], i["label_cs"], i["label_en"], i["broader"], i["definition_en"], ""]
            for name, items in codes.items() for i in items],
           [20, 8, 40, 45, 10, 60, 40])
+
+    ws = wb.create_sheet("Deprecated")
+    sheet(ws, ["Term", "Label (en)", "Replaced by", "Note", "Still a column"],
+          [[d["term"], d["label_en"], d["replaced_by"], d["note"], d["column"]] for d in deprecated_terms(ctx, rows)],
+          [28, 24, 45, 70, 30])
 
     ws = wb.create_sheet("Fields")
     sheet(ws, ["Field", "Title", "Generated from"], [list(f) for f in FIELDS], [22, 22, 70])
@@ -165,6 +187,17 @@ def to_qmd(rows, codes, ctx) -> str:
             ]
             o += [f"| **{k}** | {v} |" for k, v in details if v]
             o += ["", ": {tbl-colwidths=\"[22,78]\"}", ""]
+
+    dep = deprecated_terms(ctx, rows)
+    if dep:
+        o += ["\\newpage", "", "# Appendix: deprecated terms", "",
+              "Ontology terms that are deprecated (`owl:deprecated`): kept, never deleted, so that",
+              "older data and documents stay interpretable, but not to be used for new data. The",
+              "business glossary lists current terms only.", "",
+              "| Term | Replaced by | Still a column | Note |", "|---|---|---|---|"]
+        o += [f"| {code(d['term'])} ({esc(d['label_en'])}) | {esc(d['replaced_by'])} | "
+              f"{code(d['column']) if d['column'] else 'no'} | {esc(d['note'])} |" for d in dep]
+        o += ["", ": Deprecated terms {tbl-colwidths=\"[24,24,16,36]\"}", ""]
 
     o += ["\\newpage", "", "# Appendix: codelists", "",
           "Allowed values of the codelist columns, from the SKOS reference data. Labels in",

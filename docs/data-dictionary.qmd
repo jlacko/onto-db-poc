@@ -362,7 +362,7 @@ An offence record is an information record, kept by the Police of the Czech Repu
 | **Cardinality** | 1..1 |
 | **Business rule** | Every offence record has exactly one anonymised latitude between -90 and 90 degrees. |
 | **Source field (CSV)** | `y` |
-| **Status** | draft |
+| **Status** | archaic |
 
 : {tbl-colwidths="[22,78]"}
 
@@ -378,7 +378,7 @@ An offence record is an information record, kept by the Police of the Czech Repu
 | **Cardinality** | 1..1 |
 | **Business rule** | Every offence record has exactly one anonymised longitude between -180 and 180 degrees. |
 | **Source field (CSV)** | `x` |
-| **Status** | draft |
+| **Status** | archaic |
 
 : {tbl-colwidths="[22,78]"}
 
@@ -790,6 +790,21 @@ One run of the loader; the latest finished run is the 'as of' date of the whole 
 | **Status** | technical |
 
 : {tbl-colwidths="[22,78]"}
+
+\newpage
+
+# Appendix: deprecated terms
+
+Ontology terms that are deprecated (`owl:deprecated`): kept, never deleted, so that
+older data and documents stay interpretable, but not to be used for new data. The
+business glossary lists current terms only.
+
+| Term | Replaced by | Still a column | Note |
+|---|---|---|---|
+| `krim:anonymisedLatitude` (anonymised latitude) | krim:centreLatitude, krim:inAnonymisationArea | `offence_record.latitude` | Deprecated in iteration 2: the published point belongs to the record's anonymisation area, not to the record. Use krim:inAnonymisationArea, then krim:centreLatitude of the area. |
+| `krim:anonymisedLongitude` (anonymised longitude) | krim:centreLongitude, krim:inAnonymisationArea | `offence_record.longitude` | Deprecated in iteration 2: the published point belongs to the record's anonymisation area, not to the record. Use krim:inAnonymisationArea, then krim:centreLongitude of the area. |
+
+: Deprecated terms {tbl-colwidths="[24,24,16,36]"}
 
 \newpage
 
