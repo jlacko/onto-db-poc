@@ -10,8 +10,9 @@ populated with a continuous, duplicate-free history of Czech crime records from 
 anonymisation areas and municipalities); the first version is tagged `v0.1.0`.
 Terms are deprecated, not renamed or removed.
 
-**Grand finale:** a draft second edition of the guide, revised by the lessons
-learned and using this crime dataset as its worked example:
+**Grand finale:** a standalone guide to the method (draft), written from the
+lessons learned and using this crime dataset as its worked example, with an
+appendix on the technical stack:
 [`docs/guide.qmd`](docs/guide.qmd), rendered as [`docs/guide.pdf`](docs/guide.pdf).
 
 ## The sequence (adapted from PDF part I)

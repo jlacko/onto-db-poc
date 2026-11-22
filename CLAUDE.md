@@ -25,7 +25,7 @@ for the API, not a template). Use the venv: `.venv/bin/python`.
 | `db/schema.sql` | SQLite DDL incl. `meta_column` data dictionary | **generated** (`scripts/generate_ddl.py`) |
 | `db/data-dictionary.{csv,xlsx}`, `docs/data-dictionary.{qmd,pdf}` | Data dictionary exports | **generated** (`scripts/generate_dictionary.py --pdf`) |
 | `docs/glossary.qmd`, `docs/img/concepts.{dot,pdf}`, `docs/glossary.pdf` | Czech business glossary | **generated** (`scripts/generate_glossary.py --pdf`) |
-| `docs/action-plan.qmd`, `docs/lessons-learned.qmd`, `docs/guide.qmd` | Write-ups, and the second edition of the guide (render with `quarto render`) | hand |
+| `docs/action-plan.qmd`, `docs/lessons-learned.qmd`, `docs/guide.qmd` | Write-ups, and the standalone guide to the method (render with `quarto render`) | hand |
 | `build/` | Database, caches (git-ignored) | generated |
 
 Never hand-edit generated files; change the source and regenerate.

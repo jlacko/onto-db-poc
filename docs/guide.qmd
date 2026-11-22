@@ -1,6 +1,6 @@
 ---
 title: "Building and Running Ontologies with LLMs"
-subtitle: "Second edition (draft): authoring with an LLM, sharing with business readers, driving a database, and changing a released model. Worked example: Czech police crime records."
+subtitle: "Authoring with an LLM, sharing with business readers, driving a database, and changing a released model. Worked example: Czech police crime records."
 date: 2026-11-22
 format:
   pdf:
@@ -22,30 +22,37 @@ format:
         \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}
 ---
 
-# About this edition
+# Introduction
 
-The first edition collected practices for building an ontology with an LLM and
-keeping it useful to people and systems. This edition keeps its four parts
-(authoring, sharing, data, lifecycle) and revises them after one proof of
-concept that followed the guide end to end: an ontology, its validation loop,
-a generated SQLite database, a data dictionary and a business glossary, built
-with Claude Code and then changed once after its first release. The examples
-come from that project instead of finance and controlling.
+This guide describes a method for building an ontology with a large language
+model (LLM) and keeping it useful to everyone who depends on it: the LLM that
+drafts it, the domain expert who judges it, the business readers who use its
+terms, and the database it drives. It has four parts: authoring (Part I),
+sharing with non-technical readers (Part II), driving a data model (Part III)
+and changing a released model (Part IV).
 
-The main changes, each explained where it belongs:
+The method was tested in one proof of concept, followed end to end: an
+ontology, its validation loop, a generated SQLite database, a data dictionary
+and a business glossary, built with an LLM coding agent and then changed once
+after its first release. Every practice is illustrated by what happened there,
+including what went wrong. The reader is assumed to know roughly what an
+ontology is and to have met RDF, OWL and SHACL; Appendix B describes the tools.
 
-- a new **first step**: state how the key concepts relate, in a few sentences a
+The ideas that carry most weight, each explained where it belongs:
+
+- start by stating **how the key concepts relate**, in a few sentences a
   domain expert can judge, before writing competency questions;
-- competency questions with **expected answers written by the expert by hand**,
-  tested in **two query layers** (SPARQL and SQL);
+- treat competency questions as an executable spec, with **expected answers
+  written by the expert by hand** and tested in **two query layers** (SPARQL
+  and SQL);
 - **reuse by definition, not by name**, checked against the vocabulary's own file;
-- every check in the validation loop has a **negative test**, and every
+- give every check in the validation loop a **negative test**, and every
   generated artifact a **drift check**;
-- the source's **packaging is not the domain**: file splits, pagination and API
-  resources must not become concepts;
-- **physical design** as part of the bridge from shapes to schema;
-- **iterating on a released model**: the steps to revisit, and deprecation in
-  every generated artifact.
+- remember that the source's **packaging is not the domain**: file splits,
+  pagination and API resources must not become concepts;
+- include **physical design** in the bridge from shapes to schema;
+- plan for **iterating on a released model**: the steps to revisit, and
+  deprecation in every generated artifact.
 
 ## The worked example
 
@@ -143,8 +150,7 @@ specification. In the example:
 > excluded from the denominator; categories with no remaining records are
 > omitted.*
 
-Then make the questions executable, in four ways the first edition did not
-spell out:
+Then make the questions executable, in four ways:
 
 - **The expert writes the expected answers by hand**, from a small sample, for
   the key questions. The value is in the disagreements. In the example, five
@@ -273,8 +279,8 @@ Three habits make the loop trustworthy:
   for a missing separator, the right fix was the answer, not a more lenient
   parser. A crashed section is reported as a failure and the others still run.
 
-The typical LLM errors of the first edition all appeared, plus new ones; they
-are collected in Appendix A.
+The errors an LLM typically makes, and those the example added, are collected
+in Appendix A.
 
 ## Practice 7: Small modules under git, with a CLAUDE.md
 
@@ -305,9 +311,9 @@ internals, Czech business translations**.
 
 : Formats by task {tbl-colwidths="[26,30,44]"}
 
-The first edition proposed Excel for the glossary. In the example the reader
-asked for a PDF: a glossary is read, not edited, and comments go to the
-dictionary review.
+A spreadsheet looks like the natural format for a glossary. In the example the
+reader asked for a PDF instead: a glossary is read, not edited, and comments
+go to the dictionary review.
 
 ## What the glossary contains
 
@@ -382,7 +388,7 @@ guided by a handful of database-mapping hints in a separate namespace
 
 : Shapes to SQL {tbl-colwidths="[40,60]"}
 
-The last two rows are new in this edition. The generated schema was correct
+The last two rows were learned the hard way. The generated schema was correct
 but had no index on a new foreign key, and the first quality check on 1.38
 million records ran for over ten minutes before it was stopped. SQLite does not
 index foreign keys itself. A rule (index every foreign-key column) plus two
@@ -401,8 +407,7 @@ was in one query, not in a busy core. Measure before optimising.
 
 : Kinds of content {tbl-colwidths="[24,46,30]"}
 
-The boundary between a codelist and a dataset is a new line in this edition. A
-codelist is something people look up by code and agree on (6,258 municipalities
+Draw the boundary between a codelist and a dataset deliberately. A codelist is something people look up by code and agree on (6,258 municipalities
 qualify); a list of 40,000 polygons is reference data, but nobody looks up an
 area by its number, so it stays out of the Turtle files. Codelists are
 generated from the publisher's files, with hand-maintained translations in one
@@ -443,8 +448,8 @@ maintain them by hand.
 
 # Part IV: Lifecycle
 
-An ontology is released like a library other systems depend on. The rules of
-the first edition held: identifiers are permanent, meanings do not change under
+An ontology is released like a library other systems depend on. The usual rules
+apply: identifiers are permanent, meanings do not change under
 an IRI, terms are deprecated, never deleted, and every consumer records the
 release it was built from (the schema carries a release table; the dictionary
 and glossary are stamped).
@@ -491,7 +496,7 @@ shapes, schema, dictionary and glossary from the same commit, as one bundle.
 Freeze releases when downstream consumers are busiest (a reporting close in
 finance; a publisher's regeneration cycle here).
 
-## Two time axes, again
+## Time axes
 
 Keep "which release defined this term" apart from "when was this item in
 force". Reference data need effective dating inside the data (an area list
@@ -501,13 +506,13 @@ data themselves add a third pair: report time and observation time (Part III).
 
 # Appendix A: Typical LLM errors
 
-From the first edition, all seen again:
+Classic modelling errors, all seen in the example:
 
 - subclass confused with part-of or instance-of;
 - duplicate concepts under different names;
 - `rdfs:domain` / `rdfs:range` used as constraints (they are inference rules).
 
-New in this edition, each seen in the example:
+Errors of working from a real source with real tools, each seen in the example:
 
 - **Meaning assumed from a field name.** The timestamp was modelled as the time
   of the incident; the publisher's help says it is the time of report.
@@ -535,20 +540,75 @@ Two errors were the human's, and the method should expect them: arithmetic
 slips in hand answers, and a format rule (a mandatory separator) forgotten.
 Neither side is the oracle.
 
-# Appendix B: What changed from the first edition
+# Appendix B: The technical stack
 
-| First edition | Second edition |
+The method needs no particular tools, but it does need every step to be
+repeatable from the command line. The proof of concept used a deliberately
+small stack: plain text files under git, a handful of Python libraries, and
+free command-line tools. Versions are those of November 2026.
+
+## Formats
+
+| Format | Used for |
 |---|---|
-| Sequence starts with competency questions | Starts with reconnaissance and concept sentences; the warning about packaging |
-| Competency questions become SPARQL tests | Expected answers by the expert, values hidden on failure, SPARQL and SQL must agree |
-| Reuse before inventing | Reuse by definition, read the vocabulary's file; link fragile IDs; exact vs close match |
-| Reasoner, report, CQ tests | Eight-section loop with negative tests, drift checks, concept tracing, loader tests |
-| Excel glossary | Format by the reader's task: PDF glossary, Excel dictionary review, CSV samples |
-| Shapes map onto the data model | The same, plus local definitions for reused properties and indexes by rule |
-| Reference data with the ontology | Codelists with the ontology; large reference datasets in the database only |
-| Lifecycle rules | The same, exercised: iterating on a release, deprecation in every artifact, pre-1.0 versions |
+| Turtle (OWL 2, SHACL, SKOS) | the ontology, the shapes, the codelists, the test sample and the invalid data |
+| Markdown with fenced blocks | the concept sentences and the competency questions; the validator reads the fenced blocks (cardinalities, expected answers) |
+| SPARQL 1.1 and SQL | the competency-question queries, one file per question and layer; SPARQL-based SHACL rules (uniqueness, cross-field checks) |
+| CSV | hand-maintained translations of codelist items; samples for answering by hand |
+| Quarto (`.qmd`) | the glossary, the data dictionary and the write-ups, generated or written as Markdown and rendered to PDF |
 
-: Changes {tbl-colwidths="[38,62]"}
+: Formats {tbl-colwidths="[28,72]"}
+
+## Software
+
+| Tool | Role |
+|---|---|
+| Python 3.14, in a virtual environment | every script; four dependencies, the rest is the standard library (`sqlite3`, `csv`, `urllib`, `zipfile`) |
+| rdflib 7 | parsing Turtle, graph manipulation, the SPARQL engine for the competency questions |
+| pySHACL | SHACL validation, including SHACL-SPARQL constraints (advanced mode) |
+| owlready2, with HermiT | consistency checking with an OWL 2 DL reasoner; HermiT runs on Java (OpenJDK 21) |
+| openpyxl | the Excel version of the data dictionary, for review |
+| SQLite 3 | the target database: one file, no server; foreign keys enforced, the type hierarchy as a recursive view |
+| Quarto, with XeLaTeX | rendering PDFs (KOMA-Script article class, Noto fonts) |
+| Graphviz | the concept diagram in the glossary, drawn from the shapes |
+| git, GitHub | history, a branch per iteration, release tags |
+| Claude Code | the LLM coding agent that drafted the files and ran the loop, guided by `CLAUDE.md` |
+
+: Software {tbl-colwidths="[30,70]"}
+
+## Scripts
+
+About 2,900 lines of Python in twelve scripts, each doing one job. The
+generators share one interpretation of the shapes (`shapes_model.py`), so the
+schema, the loader and the dictionary cannot disagree about what a column is.
+
+| Script | Does |
+|---|---|
+| `build_reference.py` | builds the SKOS codelists from the publisher's and the statistical office's files (cached) |
+| `shapes_model.py` | reads the SHACL shapes and mapping hints into tables and columns |
+| `generate_ddl.py` | writes the SQLite schema, indexes and the data-dictionary table |
+| `rdf2sql.py` | loads RDF individuals (codelists, the test sample) into SQLite |
+| `load.py` | downloads (cached), merges and loads the real data; quality report |
+| `dictionary.py`, `generate_dictionary.py` | the data dictionary as CSV, Excel and PDF |
+| `generate_glossary.py` | the Czech business glossary and its concept diagram |
+| `render_sample.py` | the spreadsheet versions of the test sample |
+| `cq_index.py` | the index at the top of the competency questions |
+| `validate.py` | the validation loop (eight sections, Part I) |
+| `common.py` | shared paths, namespaces and helpers |
+
+: Scripts {tbl-colwidths="[34,66]"}
+
+## What was left out, and when to add it
+
+No ontology editor (such as Protégé): the LLM edits the text files, and the
+validation loop takes the place of the editor's checks. No triple store: the
+ontology and the test sample fit in memory, and operational data live in the
+database. No modelling framework: LinkML would have generated the schema too,
+but the shapes already carried the rules, and a small interpreter was enough.
+For a larger ontology with several contributors, the OBO Foundry's Ontology
+Development Kit (ROBOT, standard release workflows and continuous-integration
+checks) is the natural next step; a server database replaces SQLite when the
+data outgrow one file.
 
 # Appendix C: The example project
 
