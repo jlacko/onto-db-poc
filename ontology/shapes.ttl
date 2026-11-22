@@ -216,11 +216,12 @@ krim:AnonymisationAreaCentreShape
             "Dvě anonymizační oblasti nesmějí mít stejný střed."@cs ;
         sh:prefixes <https://example.org/kriminalita/shapes> ;
         sh:select """
-            SELECT $this ?value WHERE {
+            SELECT $this ?value ?path WHERE {
                 $this krim:centreLatitude ?lat ; krim:centreLongitude ?lon .
                 ?other krim:centreLatitude ?lat ; krim:centreLongitude ?lon ; a krim:AnonymisationArea .
                 FILTER (?other != $this)
                 BIND (?other AS ?value)
+                BIND (krim:centreLatitude AS ?path)
             }"""
     ] .
 

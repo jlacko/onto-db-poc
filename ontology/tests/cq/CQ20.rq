@@ -1,0 +1,6 @@
+# CQ20 Records per area of Pusta Polom (509736), areas with no records included.
+SELECT ?area (COUNT(?r) AS ?records) WHERE {
+  ?a a krim:AnonymisationArea ; dcterms:identifier ?area ; krim:inMunicipality ?m .
+  ?m skos:notation 509736 .
+  OPTIONAL { ?r krim:inAnonymisationArea ?a }
+} GROUP BY ?area

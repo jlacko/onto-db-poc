@@ -417,17 +417,18 @@ def check_shacl(rep: Report):
             f"reference data + sample data: {len(violations)} violations")
     for v in violations:
         rep.add("FAIL", f"  {v['focus']} {v['path']}: {v['message']}")
-    expected_warn = {URIRef("https://example.org/kriminalita/record/1010")}
+    expected_warn = {URIRef("https://example.org/kriminalita/area/99001")}
     got_warn = {w["focus"] for w in warnings}
     rep.add("PASS" if got_warn == expected_warn else "FAIL",
-            f"warnings raised for {sorted(str(x).rsplit('/', 1)[1] for x in got_warn)} "
-            "(expected: record 1010, foreign location outside the Czechia box)")
+            f"warnings raised for {sorted(str(x).rsplit('/', 2)[1] + ' ' + str(x).rsplit('/', 1)[1] for x in got_warn)} "
+            "(expected: area 99001, a fictional test area outside the Czechia box)")
 
     # Negative tests: each individual in invalid-data.ttl must fail for the stated reason.
     text = (TESTS / "invalid-data.ttl").read_text(encoding="utf-8")
     expect = {}
+    prefixes = {"rec": "https://example.org/kriminalita/record/", "area": "https://example.org/kriminalita/area/"}
     for m in re.finditer(r"^(\w+):(\w+) a .*# expect: (\w+)", text, re.M):
-        prefix = {"rec": "https://example.org/kriminalita/record/"}[m.group(1)]
+        prefix = prefixes[m.group(1)]
         expect[URIRef(prefix + m.group(2))] = m.group(3)
     bad = load_graph(*model_files(), TESTS / "sample-data.ttl", TESTS / "invalid-data.ttl")
     _, rows = _shacl(bad)
@@ -438,8 +439,8 @@ def check_shacl(rep: Report):
                 f"negative test {str(node).rsplit('/', 1)[1]}: expected violation on {prop}"
                 + (f", got: {hit[0]['message'][:90]}" if hit else ", NOT reported"))
     # A rule between two nodes (e.g. a duplicate identifier) flags both; the comment names the partner.
-    partners = {URIRef("https://example.org/kriminalita/record/" + m.group(1))
-                for m in re.finditer(r"also flags rec:(\w+)", text)}
+    partners = {URIRef(prefixes[m.group(1)] + m.group(2))
+                for m in re.finditer(r"also flags (\w+):(\w+)", text)}
     unexpected = {r["focus"] for r in viol} - set(expect) - partners
     if unexpected:
         rep.add("FAIL", f"unexpected violations for {sorted(map(str, unexpected))}")

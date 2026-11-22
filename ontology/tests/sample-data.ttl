@@ -3,17 +3,21 @@
 @prefix rec:     <https://example.org/kriminalita/record/> .
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix area:    <https://example.org/kriminalita/area/> .
 
 # Test suite: a small, hand-made set of individuals that exercises every
 # competency question and every shape. Fictional records, realistic codes.
 # krim:stateAsOf is when the publisher reported the state we hold (the latest one).
 # Each record lists its types as the publisher does: a type plus all broader types.
+# Each record lies in a real anonymisation area of the publisher's list (ids and
+# centres as published); the areas are at the end of the file. Municipalities come
+# from the reference data (ČSÚ codelist 43).
 
 # Burglary of a flat in Prague, unsolved.
 rec:1001 a krim:OffenceRecord ;
     dcterms:identifier 1001 ;
     krim:reportDateTime "2025-01-05T22:15:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 50.081 ; krim:anonymisedLongitude 14.421 ;
+    krim:inAnonymisationArea area:30685 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/2 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/18 , krimc:type\/19 ;
@@ -23,7 +27,7 @@ rec:1001 a krim:OffenceRecord ;
 rec:1002 a krim:OffenceRecord ;
     dcterms:identifier 1002 ;
     krim:reportDateTime "2025-01-12T03:40:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 49.195 ; krim:anonymisedLongitude 16.608 ;
+    krim:inAnonymisationArea area:20168 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/18 , krimc:type\/20 ;
@@ -33,7 +37,7 @@ rec:1002 a krim:OffenceRecord ;
 rec:1003 a krim:OffenceRecord ;
     dcterms:identifier 1003 ;
     krim:reportDateTime "2025-01-20T14:00:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 50.072 ; krim:anonymisedLongitude 14.452 ;
+    krim:inAnonymisationArea area:30503 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/1 , krimc:type\/8 ;
@@ -43,7 +47,7 @@ rec:1003 a krim:OffenceRecord ;
 rec:1004 a krim:OffenceRecord ;
     dcterms:identifier 1004 ;
     krim:reportDateTime "2025-01-25T21:30:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 49.835 ; krim:anonymisedLongitude 18.282 ;
+    krim:inAnonymisationArea area:10103 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/1 , krimc:type\/3 , krimc:type\/84 , krimc:type\/86 ;
@@ -53,7 +57,7 @@ rec:1004 a krim:OffenceRecord ;
 rec:1005 a krim:OffenceRecord ;
     dcterms:identifier 1005 ;
     krim:reportDateTime "2025-01-31T08:10:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 50.091 ; krim:anonymisedLongitude 14.401 ;
+    krim:inAnonymisationArea area:30650 ;
     krim:recordedByMunicipalPolice true ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/97 , krimc:type\/74 , krimc:type\/124 ;
@@ -63,7 +67,7 @@ rec:1005 a krim:OffenceRecord ;
 rec:1006 a krim:OffenceRecord ;
     dcterms:identifier 1006 ;
     krim:reportDateTime "2025-02-02T00:00:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 49.741 ; krim:anonymisedLongitude 13.373 ;
+    krim:inAnonymisationArea area:26817 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/3 ; krim:hasLocationRelevance krimc:relevance\/2 ;
     krim:hasOffenceType krimc:type\/35 , krimc:type\/42 ;
@@ -73,7 +77,7 @@ rec:1006 a krim:OffenceRecord ;
 rec:1007 a krim:OffenceRecord ;
     dcterms:identifier 1007 ;
     krim:reportDateTime "2025-02-08T22:50:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 50.083 ; krim:anonymisedLongitude 14.433 ;
+    krim:inAnonymisationArea area:30719 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/2 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/18 , krimc:type\/19 ;
@@ -83,27 +87,27 @@ rec:1007 a krim:OffenceRecord ;
 rec:1008 a krim:OffenceRecord ;
     dcterms:identifier 1008 ;
     krim:reportDateTime "2025-02-14T17:05:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 49.201 ; krim:anonymisedLongitude 16.602 ;
+    krim:inAnonymisationArea area:20160 ;
     krim:recordedByMunicipalPolice true ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/97 , krimc:type\/76 , krimc:type\/111 ;
     krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .
 
-# Other property crime in Liberec, found not to be an offence; place of consequence.
+# Other property crime in Pustá Polom, found not to be an offence; place of consequence.
 rec:1009 a krim:OffenceRecord ;
     dcterms:identifier 1009 ;
     krim:reportDateTime "2025-02-15T23:20:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 50.767 ; krim:anonymisedLongitude 15.056 ;
+    krim:inAnonymisationArea area:38040 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/4 ; krim:hasLocationRelevance krimc:relevance\/3 ;
     krim:hasOffenceType krimc:type\/55 , krimc:type\/102 ;
     krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .
 
-# Fraud with a foreign location (Vienna): expected to raise the Czechia bounding-box warning.
+# Fraud with a foreign location: the published point is still a Czech area (Pustá Polom).
 rec:1010 a krim:OffenceRecord ;
     dcterms:identifier 1010 ;
     krim:reportDateTime "2025-02-20T10:00:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 48.208 ; krim:anonymisedLongitude 16.373 ;
+    krim:inAnonymisationArea area:38042 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/2 ; krim:hasLocationRelevance krimc:relevance\/5 ;
     krim:hasOffenceType krimc:type\/54 ;
@@ -113,7 +117,7 @@ rec:1010 a krim:OffenceRecord ;
 rec:1011 a krim:OffenceRecord ;
     dcterms:identifier 1011 ;
     krim:reportDateTime "2025-02-22T19:45:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 50.102 ; krim:anonymisedLongitude 14.498 ;
+    krim:inAnonymisationArea area:30044 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/97 , krimc:type\/75 , krimc:type\/112 , krimc:type\/113 ;
@@ -123,21 +127,51 @@ rec:1011 a krim:OffenceRecord ;
 rec:1012 a krim:OffenceRecord ;
     dcterms:identifier 1012 ;
     krim:reportDateTime "2025-02-27T22:10:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 49.842 ; krim:anonymisedLongitude 18.291 ;
+    krim:inAnonymisationArea area:10087 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/6 ;
     krim:hasOffenceType krimc:type\/18 , krimc:type\/19 ;
     krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .
 
-# Neighbour dispute in Olomouc: both a crime type (violation of home freedom) and a
+# Neighbour dispute in Pustá Polom: both a crime type (violation of home freedom) and a
 # misdemeanour (civil coexistence). Crime and misdemeanour are not exclusive (CQ06).
 # State 4 (not a crime) keeps it out of the CQ03 clearance rate; March keeps it out
 # of the February questions.
 rec:1013 a krim:OffenceRecord ;
     dcterms:identifier 1013 ;
     krim:reportDateTime "2025-03-04T18:30:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 49.594 ; krim:anonymisedLongitude 17.251 ;
+    krim:inAnonymisationArea area:38040 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/4 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/63 , krimc:type\/72 , krimc:type\/97 , krimc:type\/76 , krimc:type\/111 ;
     krim:stateAsOf "2026-11-19T00:25:02"^^xsd:dateTime .
+
+# ---------------------------------------------------------------------
+# Anonymisation areas (real ids and centres from the publisher's list)
+# ---------------------------------------------------------------------
+# Prague (Praha, 554782)
+area:30044 a krim:AnonymisationArea ; dcterms:identifier 30044 ; krim:centreLatitude 50.102701 ; krim:centreLongitude 14.497833 ; krim:inMunicipality krimc:municipality\/554782 .
+area:30503 a krim:AnonymisationArea ; dcterms:identifier 30503 ; krim:centreLatitude 50.070901 ; krim:centreLongitude 14.450212 ; krim:inMunicipality krimc:municipality\/554782 .
+area:30650 a krim:AnonymisationArea ; dcterms:identifier 30650 ; krim:centreLatitude 50.090715 ; krim:centreLongitude 14.400342 ; krim:inMunicipality krimc:municipality\/554782 .
+area:30685 a krim:AnonymisationArea ; dcterms:identifier 30685 ; krim:centreLatitude 50.081089 ; krim:centreLongitude 14.420267 ; krim:inMunicipality krimc:municipality\/554782 .
+area:30719 a krim:AnonymisationArea ; dcterms:identifier 30719 ; krim:centreLatitude 50.083697 ; krim:centreLongitude 14.433828 ; krim:inMunicipality krimc:municipality\/554782 .
+# Brno (582786)
+area:20160 a krim:AnonymisationArea ; dcterms:identifier 20160 ; krim:centreLatitude 49.200501 ; krim:centreLongitude 16.603217 ; krim:inMunicipality krimc:municipality\/582786 .
+area:20168 a krim:AnonymisationArea ; dcterms:identifier 20168 ; krim:centreLatitude 49.194863 ; krim:centreLongitude 16.60887 ; krim:inMunicipality krimc:municipality\/582786 .
+# Ostrava (554821)
+area:10087 a krim:AnonymisationArea ; dcterms:identifier 10087 ; krim:centreLatitude 49.840952 ; krim:centreLongitude 18.290284 ; krim:inMunicipality krimc:municipality\/554821 .
+area:10103 a krim:AnonymisationArea ; dcterms:identifier 10103 ; krim:centreLatitude 49.835239 ; krim:centreLongitude 18.279904 ; krim:inMunicipality krimc:municipality\/554821 .
+# Plzeň (554791)
+area:26817 a krim:AnonymisationArea ; dcterms:identifier 26817 ; krim:centreLatitude 49.740934 ; krim:centreLongitude 13.368434 ; krim:inMunicipality krimc:municipality\/554791 .
+# Pustá Polom (509736): all four of its areas, two of them with no records (CQ20).
+area:38039 a krim:AnonymisationArea ; dcterms:identifier 38039 ; krim:centreLatitude 49.833235 ; krim:centreLongitude 18.009525 ; krim:inMunicipality krimc:municipality\/509736 .
+area:38040 a krim:AnonymisationArea ; dcterms:identifier 38040 ; krim:centreLatitude 49.850153 ; krim:centreLongitude 17.998752 ; krim:inMunicipality krimc:municipality\/509736 .
+area:38041 a krim:AnonymisationArea ; dcterms:identifier 38041 ; krim:centreLatitude 49.866778 ; krim:centreLongitude 17.997775 ; krim:inMunicipality krimc:municipality\/509736 .
+area:38042 a krim:AnonymisationArea ; dcterms:identifier 38042 ; krim:centreLatitude 49.857929 ; krim:centreLongitude 17.981898 ; krim:inMunicipality krimc:municipality\/509736 .
+# Boletice (545422), a military training area: not split, a single area, no records (CQ21).
+area:7171 a krim:AnonymisationArea ; dcterms:identifier 7171 ; krim:centreLatitude 48.850979 ; krim:centreLongitude 14.112403 ; krim:inMunicipality krimc:municipality\/545422 .
+# FICTIONAL test area with its centre in Vienna, outside the Czechia box: expected
+# to raise the bounding-box warning. Real areas all lie in Czechia; the warning is
+# there to catch a corrupted list. Assigned to Mikulov (584649) only because an area
+# needs a municipality.
+area:99001 a krim:AnonymisationArea ; dcterms:identifier 99001 ; krim:centreLatitude 48.208 ; krim:centreLongitude 16.373 ; krim:inMunicipality krimc:municipality\/584649 .

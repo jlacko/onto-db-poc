@@ -3,6 +3,7 @@
 @prefix rec:     <https://example.org/kriminalita/record/> .
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix area:    <https://example.org/kriminalita/area/> .
 
 # Negative tests: each individual breaks exactly one rule. validate.py checks
 # that SHACL reports each one (the expected violation is in the comment as
@@ -11,7 +12,7 @@
 rec:9007 a krim:OffenceRecord ;               # expect: identifier (duplicate of record 1001; also flags rec:1001)
     dcterms:identifier 1001 ;
     krim:reportDateTime "2025-01-05T22:15:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 50.081 ; krim:anonymisedLongitude 14.421 ;
+    krim:inAnonymisationArea area:30685 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/18 , krimc:type\/19 ;
@@ -20,7 +21,7 @@ rec:9007 a krim:OffenceRecord ;               # expect: identifier (duplicate of
 rec:9001 a krim:OffenceRecord ;               # expect: hasClearanceState (missing)
     dcterms:identifier 9001 ;
     krim:reportDateTime "2025-02-01T10:00:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 50.0 ; krim:anonymisedLongitude 14.4 ;
+    krim:inAnonymisationArea area:30685 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/35 , krimc:type\/42 ;
@@ -29,7 +30,7 @@ rec:9001 a krim:OffenceRecord ;               # expect: hasClearanceState (missi
 rec:9002 a krim:OffenceRecord ;               # expect: hasClearanceState (two values)
     dcterms:identifier 9002 ;
     krim:reportDateTime "2025-02-01T10:00:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 50.0 ; krim:anonymisedLongitude 14.4 ;
+    krim:inAnonymisationArea area:30685 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/1 , krimc:state\/2 ;
     krim:hasLocationRelevance krimc:relevance\/4 ;
@@ -39,16 +40,16 @@ rec:9002 a krim:OffenceRecord ;               # expect: hasClearanceState (two v
 rec:9003 a krim:OffenceRecord ;               # expect: hasOffenceType (unknown code 999)
     dcterms:identifier 9003 ;
     krim:reportDateTime "2025-02-01T10:00:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 50.0 ; krim:anonymisedLongitude 14.4 ;
+    krim:inAnonymisationArea area:30685 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/999 ;
     krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime .
 
-rec:9004 a krim:OffenceRecord ;               # expect: anonymisedLatitude (out of range)
+rec:9004 a krim:OffenceRecord ;               # expect: inAnonymisationArea (not an area: a clearance state)
     dcterms:identifier 9004 ;
     krim:reportDateTime "2025-02-01T10:00:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 95.0 ; krim:anonymisedLongitude 14.4 ;
+    krim:inAnonymisationArea krimc:state\/1 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/35 , krimc:type\/42 ;
@@ -57,7 +58,7 @@ rec:9004 a krim:OffenceRecord ;               # expect: anonymisedLatitude (out 
 rec:9005 a krim:OffenceRecord ;               # expect: reportDateTime (wrong datatype)
     dcterms:identifier 9005 ;
     krim:reportDateTime "19. 2. 2025" ;
-    krim:anonymisedLatitude 50.0 ; krim:anonymisedLongitude 14.4 ;
+    krim:inAnonymisationArea area:30685 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/35 , krimc:type\/42 ;
@@ -66,9 +67,23 @@ rec:9005 a krim:OffenceRecord ;               # expect: reportDateTime (wrong da
 rec:9006 a krim:OffenceRecord ;               # expect: suspectName (closed shape: undeclared property)
     dcterms:identifier 9006 ;
     krim:reportDateTime "2025-02-01T10:00:00+01:00"^^xsd:dateTime ;
-    krim:anonymisedLatitude 50.0 ; krim:anonymisedLongitude 14.4 ;
+    krim:inAnonymisationArea area:30685 ;
     krim:recordedByMunicipalPolice false ;
     krim:hasClearanceState krimc:state\/1 ; krim:hasLocationRelevance krimc:relevance\/4 ;
     krim:hasOffenceType krimc:type\/35 , krimc:type\/42 ;
     krim:stateAsOf "2026-11-19T00:27:18"^^xsd:dateTime ;
     krim:suspectName "Jan Novák" .
+
+area:99901 a krim:AnonymisationArea ;          # expect: centreLatitude (out of range)
+    dcterms:identifier 99901 ;
+    krim:centreLatitude 95.0 ; krim:centreLongitude 14.4 ;
+    krim:inMunicipality krimc:municipality\/554782 .
+
+area:99902 a krim:AnonymisationArea ;          # expect: centreLatitude (same centre as area 30685; also flags area:30685)
+    dcterms:identifier 99902 ;
+    krim:centreLatitude 50.081089 ; krim:centreLongitude 14.420267 ;
+    krim:inMunicipality krimc:municipality\/554782 .
+
+area:99903 a krim:AnonymisationArea ;          # expect: inMunicipality (missing)
+    dcterms:identifier 99903 ;
+    krim:centreLatitude 50.2 ; krim:centreLongitude 14.6 .
