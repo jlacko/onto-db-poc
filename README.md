@@ -1,8 +1,9 @@
 # onto-db-poc
 
 **The chief output of this project is a guide: [*Building and Running Ontologies
-with LLMs*](docs/guide.pdf)** (draft; source [`docs/guide.qmd`](docs/guide.qmd)).
-It describes a method for building an ontology with a large language model and
+with LLMs*](docs/guide.pdf)** (draft; source [`docs/guide.qmd`](docs/guide.qmd)),
+**summarised in a [10-slide presentation](docs/slides.pdf)** (source
+[`docs/slides.qmd`](docs/slides.qmd)). The guide describes a method for building an ontology with a large language model and
 keeping it useful to everyone who depends on it: the LLM that drafts it, the
 domain expert who judges it, the business readers who use its terms, and the
 database it drives.
@@ -14,9 +15,6 @@ database it drives.
 | III. Ontology and data | concepts, terms and data elements; SHACL shapes as the bridge to a relational schema, physical design included; codelists versus datasets; continuous history |
 | IV. Lifecycle | releases, deprecation, and iterating on a released model |
 | Appendices | typical LLM errors; the technical stack |
-
-A 10-slide summary of the process, in the JLA presentation layout:
-[`docs/slides.pdf`](docs/slides.pdf) (source [`docs/slides.qmd`](docs/slides.qmd)).
 
 Everything else in this repository exists to test and illustrate that guide.
 The method started from `llm-readable-ontologies.pdf` (an inspiration, not a
