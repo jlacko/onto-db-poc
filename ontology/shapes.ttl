@@ -339,4 +339,173 @@ krim:MunicipalityShape
         sh:description "A municipality has at most one English definition."@en , "Obec má nejvýše jednu anglickou definici."@cs ;
         sh:datatype rdf:langString ; sh:languageIn ( "en" ) ; sh:maxCount 1 ;
         kdb:column "definition_en" ; sh:order 3
+    ] ;
+    sh:property [
+        sh:path krim:inOrpArea ;
+        sh:name "ORP area"@en , "správní obvod ORP"@cs ;
+        sh:description "Every municipality lies in exactly one ORP area."@en , "Každá obec leží právě v jednom správním obvodu ORP."@cs ;
+        sh:class krim:OrpArea ; sh:minCount 1 ; sh:maxCount 1 ;
+        kdb:column "orp_area_code" ; sh:order 4
+    ] ;
+    sh:property [
+        sh:path krim:inOkres ;
+        sh:name "okres"@en , "okres"@cs ;
+        sh:description "Every municipality lies in exactly one okres."@en , "Každá obec leží právě v jednom okrese."@cs ;
+        sh:class krim:Okres ; sh:minCount 1 ; sh:maxCount 1 ;
+        kdb:column "okres_code" ; sh:order 5
+    ] .
+
+# A municipality reaches its kraj through two branches, its ORP area and its
+# okres; both must give the same kraj (concepts.md, S11). A hard rule between
+# three codelists, so SPARQL; the database has no counterpart, the reference
+# data are checked here before they are loaded. The SPARQL target finds the
+# suspects in one query (checking each of 6,258 municipalities in turn took a
+# minute); the constraint then reports them.
+krim:MunicipalityKrajShape
+    a sh:NodeShape ;
+    sh:target [
+        a sh:SPARQLTarget ;
+        sh:prefixes <https://example.org/kriminalita/shapes> ;
+        sh:select """
+            SELECT DISTINCT ?this WHERE {
+                ?this a krim:Municipality ;
+                    krim:inOrpArea/krim:inKraj ?viaOrp ; krim:inOkres/krim:inKraj ?viaOkres .
+                FILTER (?viaOrp != ?viaOkres)
+            }"""
+    ] ;
+    sh:sparql [
+        sh:message "A municipality's ORP area and okres must lie in the same kraj."@en ,
+            "Správní obvod ORP a okres obce musí ležet ve stejném kraji."@cs ;
+        sh:prefixes <https://example.org/kriminalita/shapes> ;
+        sh:select """
+            SELECT $this ?value ?path WHERE {
+                $this krim:inOrpArea/krim:inKraj ?viaOrp ; krim:inOkres/krim:inKraj ?value .
+                FILTER (?viaOrp != ?value)
+                BIND (krim:inOkres AS ?path)
+            }"""
+    ] .
+
+# ---------------------------------------------------------------------
+# Higher territorial units (ČSÚ codelists 65, 101, 100). Like municipalities,
+# their own rules: a code and a Czech name; ORP areas and okresy lie in a kraj,
+# a kraj matches its NUTS 3 region.
+# ---------------------------------------------------------------------
+krim:OrpAreaShape
+    a sh:NodeShape ;
+    sh:targetClass krim:OrpArea ;
+    kdb:table "orp_area" ;
+    kdb:iriColumn "iri" ;
+    sh:property [
+        sh:path skos:notation ;
+        sh:name "ORP area code"@en , "kód správního obvodu ORP"@cs ;
+        skos:definition "The four-digit code of an ORP area in ČSÚ codelist 65."@en ;  # local data-element definition: the path is a generic reused property
+        sh:description "Every ORP area has exactly one integer code from ČSÚ codelist 65."@en , "Každý správní obvod ORP má právě jeden celočíselný kód z číselníku ČSÚ 65."@cs ;
+        sh:datatype xsd:integer ; sh:minCount 1 ; sh:maxCount 1 ;
+        kdb:column "code" ; kdb:primaryKey true ; sh:order 1
+    ] ;
+    sh:property [
+        sh:path skos:prefLabel ;
+        sh:name "ORP area name"@en , "název správního obvodu ORP"@cs ;
+        skos:definition "The Czech name of an ORP area as listed in ČSÚ codelist 65, the name of its municipality with extended powers."@en ;  # local data-element definition: the path is a generic reused property
+        sh:description "Every ORP area has exactly one Czech name."@en , "Každý správní obvod ORP má právě jeden český název."@cs ;
+        sh:datatype rdf:langString ; sh:languageIn ( "cs" ) ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:qualifiedValueShape [ sh:languageIn ( "cs" ) ] ; sh:qualifiedMinCount 1 ;  # makes the column NOT NULL
+        kdb:column "name" ; kdb:languageColumns ( "cs" ) ; sh:order 2
+    ] ;
+    sh:property [
+        sh:path krim:inKraj ;
+        sh:name "kraj"@en , "kraj"@cs ;
+        sh:description "Every ORP area lies in exactly one kraj."@en , "Každý správní obvod ORP leží právě v jednom kraji."@cs ;
+        sh:class krim:Kraj ; sh:minCount 1 ; sh:maxCount 1 ;
+        kdb:column "kraj_code" ; sh:order 3
+    ] .
+
+# An ORP area normally lies within one okres (concepts.md, S12), but ORP Turnov
+# spans three, so this is a warning, not a constraint. Not stated as a link:
+# checked through the okresy of the area's municipalities. A SPARQL target, as
+# for the kraj rule above: one query finds the areas that span several okresy.
+krim:OrpAreaWithinOkresShape
+    a sh:NodeShape ;
+    sh:target [
+        a sh:SPARQLTarget ;
+        sh:prefixes <https://example.org/kriminalita/shapes> ;
+        sh:select """
+            SELECT ?this WHERE {
+                ?m a krim:Municipality ; krim:inOrpArea ?this ; krim:inOkres ?okres .
+            } GROUP BY ?this HAVING (COUNT(DISTINCT ?okres) > 1)"""
+    ] ;
+    sh:severity sh:Warning ;  # a SPARQL constraint belongs to the node shape, so the node shape's severity applies
+    sh:sparql [
+        sh:message "An ORP area's municipalities should all lie in one okres."@en ,
+            "Obce správního obvodu ORP by měly ležet v jednom okrese."@cs ;
+        sh:prefixes <https://example.org/kriminalita/shapes> ;
+        sh:select """
+            SELECT DISTINCT $this ?value ?path WHERE {
+                ?m krim:inOrpArea $this ; krim:inOkres ?value .
+                ?n krim:inOrpArea $this ; krim:inOkres ?other .
+                FILTER (?other != ?value)
+                BIND (krim:inOrpArea AS ?path)
+            }"""
+    ] .
+
+krim:OkresShape
+    a sh:NodeShape ;
+    sh:targetClass krim:Okres ;
+    kdb:table "okres" ;
+    kdb:iriColumn "iri" ;
+    sh:property [
+        sh:path skos:notation ;
+        sh:name "okres code"@en , "kód okresu"@cs ;
+        skos:definition "The five-digit code of an okres in ČSÚ codelist 101."@en ;  # local data-element definition: the path is a generic reused property
+        sh:description "Every okres has exactly one integer code from ČSÚ codelist 101."@en , "Každý okres má právě jeden celočíselný kód z číselníku ČSÚ 101."@cs ;
+        sh:datatype xsd:integer ; sh:minCount 1 ; sh:maxCount 1 ;
+        kdb:column "code" ; kdb:primaryKey true ; sh:order 1
+    ] ;
+    sh:property [
+        sh:path skos:prefLabel ;
+        sh:name "okres name"@en , "název okresu"@cs ;
+        skos:definition "The Czech name of an okres as listed in ČSÚ codelist 101."@en ;  # local data-element definition: the path is a generic reused property
+        sh:description "Every okres has exactly one Czech name."@en , "Každý okres má právě jeden český název."@cs ;
+        sh:datatype rdf:langString ; sh:languageIn ( "cs" ) ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:qualifiedValueShape [ sh:languageIn ( "cs" ) ] ; sh:qualifiedMinCount 1 ;  # makes the column NOT NULL
+        kdb:column "name" ; kdb:languageColumns ( "cs" ) ; sh:order 2
+    ] ;
+    sh:property [
+        sh:path krim:inKraj ;
+        sh:name "kraj"@en , "kraj"@cs ;
+        sh:description "Every okres lies in exactly one kraj."@en , "Každý okres leží právě v jednom kraji."@cs ;
+        sh:class krim:Kraj ; sh:minCount 1 ; sh:maxCount 1 ;
+        kdb:column "kraj_code" ; sh:order 3
+    ] .
+
+krim:KrajShape
+    a sh:NodeShape ;
+    sh:targetClass krim:Kraj ;
+    kdb:table "kraj" ;
+    kdb:iriColumn "iri" ;
+    sh:property [
+        sh:path skos:notation ;
+        sh:name "kraj code"@en , "kód kraje"@cs ;
+        skos:definition "The four-digit code of a kraj in ČSÚ codelist 100."@en ;  # local data-element definition: the path is a generic reused property
+        sh:description "Every kraj has exactly one integer code from ČSÚ codelist 100."@en , "Každý kraj má právě jeden celočíselný kód z číselníku ČSÚ 100."@cs ;
+        sh:datatype xsd:integer ; sh:minCount 1 ; sh:maxCount 1 ;
+        kdb:column "code" ; kdb:primaryKey true ; sh:order 1
+    ] ;
+    sh:property [
+        sh:path skos:prefLabel ;
+        sh:name "kraj name"@en , "název kraje"@cs ;
+        skos:definition "The Czech name of a kraj as listed in ČSÚ codelist 100."@en ;  # local data-element definition: the path is a generic reused property
+        sh:description "Every kraj has exactly one Czech name."@en , "Každý kraj má právě jeden český název."@cs ;
+        sh:datatype rdf:langString ; sh:languageIn ( "cs" ) ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:qualifiedValueShape [ sh:languageIn ( "cs" ) ] ; sh:qualifiedMinCount 1 ;  # makes the column NOT NULL
+        kdb:column "name" ; kdb:languageColumns ( "cs" ) ; sh:order 2
+    ] ;
+    sh:property [
+        sh:path skos:exactMatch ;
+        sh:name "NUTS 3 region"@en , "region NUTS 3"@cs ;
+        skos:definition "The IRI of the EU NUTS 3 region that a kraj corresponds to, in the EU Publications Office's NUTS classification."@en ;  # local data-element definition: the path is a generic reused property
+        sh:description "Every kraj matches exactly one NUTS 3 region."@en , "Každý kraj odpovídá právě jednomu regionu NUTS 3."@cs ;
+        sh:nodeKind sh:IRI ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:pattern "^http://data\\.europa\\.eu/nuts/code/CZ[0-9]{3}$" ;
+        kdb:column "nuts_iri" ; sh:order 3
     ] .

@@ -459,6 +459,22 @@ the shared codelist shape, because there is no linked-data IRI to match. This
 step was committed with validation **knowingly failing**: the sample data still
 had coordinates, so SHACL, the sample load and the CQ tests failed until Step 8.
 
+**Iteration 3.** The municipality shape gained exactly one ORP area and one
+okres; new shapes for the ORP area, okres (each in exactly one kraj) and kraj
+(exactly one NUTS 3 IRI), each with its own data-element names, as for
+municipalities. Two SPARQL rules: the **hard** one, a municipality's ORP area and
+okres lie in the same kraj (with a negative test: a fictional municipality in
+ORP Opava and okres Praha); the **soft** one, an ORP area's municipalities lie in
+one okres, a warning that fires for Turnov from the real reference data and is
+now an expected warning. All four concept sentences S8–S11 now trace to a shape.
+
+Both rules first ran per focus node and added about 90 seconds to every SHACL
+run (one SPARQL query per municipality). A SPARQL *target* finds the suspects in
+one query and checks only those: back to 6 seconds. No sample changes were
+needed, so validation passed at this step. The loader's list of codelist tables
+is now derived from the shapes instead of written out, and the data dictionary
+points to all four ČSÚ codelists instead of listing them.
+
 ## Step 8: Test suite (L builds, H answers CQs)
 
 | File | Content |

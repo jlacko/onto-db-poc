@@ -140,8 +140,10 @@ def create_db(path, areas: list[dict] | None = None, offline: bool = False) -> s
     con.execute("PRAGMA foreign_keys = ON")
     con.executescript((DB_DIR / "schema.sql").read_text(encoding="utf-8"))
     con.execute("PRAGMA defer_foreign_keys = ON")
+    # Every codelist table comes from the ontology's reference data; records and areas are
+    # operational data, loaded below and by load_month.
     rdf2sql.load(load_graph(*model_files()), con,
-                 only={"offence_type", "clearance_state", "location_relevance", "municipality"})
+                 only=set(read_model()) - {"offence_record", "anonymisation_area"})
     load_areas(con, read_areas(offline) if areas is None else areas)
     con.commit()
     return con

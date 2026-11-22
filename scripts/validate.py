@@ -421,16 +421,19 @@ def check_shacl(rep: Report):
             f"reference data + sample data: {len(violations)} violations")
     for v in violations:
         rep.add("FAIL", f"  {v['focus']} {v['path']}: {v['message']}")
-    expected_warn = {URIRef("https://example.org/kriminalita/area/99001")}
+    expected_warn = {URIRef("https://example.org/kriminalita/area/99001"),
+                     URIRef("https://example.org/kriminalita/code/orp-area/5109")}
     got_warn = {w["focus"] for w in warnings}
     rep.add("PASS" if got_warn == expected_warn else "FAIL",
             f"warnings raised for {sorted(str(x).rsplit('/', 2)[1] + ' ' + str(x).rsplit('/', 1)[1] for x in got_warn)} "
-            "(expected: area 99001, a fictional test area outside the Czechia box)")
+            "(expected: area 99001, a fictional test area outside the Czechia box; ORP area 5109 Turnov, "
+            "which spans three okresy, from the real reference data)")
 
     # Negative tests: each individual in invalid-data.ttl must fail for the stated reason.
     text = (TESTS / "invalid-data.ttl").read_text(encoding="utf-8")
     expect = {}
-    prefixes = {"rec": "https://example.org/kriminalita/record/", "area": "https://example.org/kriminalita/area/"}
+    prefixes = {"rec": "https://example.org/kriminalita/record/", "area": "https://example.org/kriminalita/area/",
+                "mun": "https://example.org/kriminalita/code/municipality/"}
     for m in re.finditer(r"^(\w+):(\w+) a .*# expect: (\w+)", text, re.M):
         prefix = prefixes[m.group(1)]
         expect[URIRef(prefix + m.group(2))] = m.group(3)

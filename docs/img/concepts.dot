@@ -8,10 +8,17 @@ digraph concepts {
   clearance_state [label="stav objasnění"];
   location_relevance [label="relevance lokality"];
   municipality [label="obec"];
+  orp_area [label="správní obvod ORP"];
+  okres [label="okres"];
+  kraj [label="kraj"];
   offence_record -> anonymisation_area [label="anonymizační oblast (1..1)"];
   offence_record -> clearance_state [label="stav objasnění (1..1)"];
   offence_record -> location_relevance [label="relevance lokality (1..1)"];
   offence_record -> offence_type [label="třída deliktu (1..*)"];
   anonymisation_area -> municipality [label="obec (1..1)"];
   offence_type -> offence_type [label="nadřazená třída (0..1)"];
+  municipality -> orp_area [label="správní obvod ORP (1..1)"];
+  municipality -> okres [label="okres (1..1)"];
+  orp_area -> kraj [label="kraj (1..1)"];
+  okres -> kraj [label="kraj (1..1)"];
 }

@@ -61,7 +61,10 @@ column has a domain-specific meaning.
 
 | Table | Realises | Columns |
 |---|---|---|
-| `municipality` | municipality | 4 |
+| `kraj` | kraj | 4 |
+| `orp_area` | ORP area | 4 |
+| `okres` | okres | 4 |
+| `municipality` | municipality | 6 |
 | `anonymisation_area` | anonymisation area | 5 |
 | `clearance_state` | clearance state | 6 |
 | `location_relevance` | location relevance | 6 |
@@ -72,6 +75,233 @@ column has a domain-specific meaning.
 | `load_run` | technical table (not part of the ontology) | 7 |
 
 : Tables {tbl-colwidths="[30,55,15]"}
+
+\newpage
+
+# Table `kraj`
+
+**Realises:** kraj (`krim:Kraj`)
+
+A kraj is a self-governing territorial unit of the Czech Republic, the highest level below the state, listed in the Czech Statistical Office's codelist 100, identified by its four-digit code and corresponding to one EU NUTS 3 region.
+
+*Not to be confused with / scope:* Not one of the eight kraje of 1960, which RÚIAN still keeps, and not a NUTS 2 cohesion region (not modelled). Includes Prague (3018), which is governed by its own act (131/2000), not by the Act on kraje (129/2000). The Czech term is kept in English: "region" is ambiguous.
+
+| Column | Data element | SQL type | Null | Key |
+|---|---|---|---|---|
+| `iri` | kraj IRI | TEXT | no | UNIQUE |
+| `code` | kraj code | INTEGER | no | PK |
+| `name_cs` | kraj name (Czech) | TEXT | no |  |
+| `nuts_iri` | NUTS 3 region | TEXT | no |  |
+
+: Columns of kraj {tbl-colwidths="[28,32,12,8,20]"}
+
+## `kraj.iri`: kraj IRI
+
+| | |
+|---|---|
+| **Czech name** | IRI |
+| **Definition** | The IRI that identifies the kraj in the ontology namespace; the join key between the database row and the ontology. |
+| **Property** | (focus node) |
+| **Value domain** | IRI |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every row has exactly one IRI. |
+| **Status** | generated |
+
+: {tbl-colwidths="[22,78]"}
+
+## `kraj.code`: kraj code
+
+| | |
+|---|---|
+| **Czech name** | kód kraje |
+| **Definition** | The four-digit code of a kraj in ČSÚ codelist 100. |
+| **Property** | skos:notation `skos:notation` |
+| **Value domain** | xsd:integer |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every kraj has exactly one integer code from ČSÚ codelist 100. |
+| **Status** | reused (skos) |
+
+: {tbl-colwidths="[22,78]"}
+
+## `kraj.name_cs`: kraj name (Czech)
+
+| | |
+|---|---|
+| **Czech name** | název kraje (česky) |
+| **Definition** | The Czech name of a kraj as listed in ČSÚ codelist 100. |
+| **Property** | skos:prefLabel `skos:prefLabel` |
+| **Value domain** | rdf:langString; text in language 'cs' |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every kraj has exactly one Czech name. |
+| **Status** | reused (skos) |
+
+: {tbl-colwidths="[22,78]"}
+
+## `kraj.nuts_iri`: NUTS 3 region
+
+| | |
+|---|---|
+| **Czech name** | region NUTS 3 |
+| **Definition** | The IRI of the EU NUTS 3 region that a kraj corresponds to, in the EU Publications Office's NUTS classification. |
+| **Property** | skos:exactMatch `skos:exactMatch` |
+| **Value domain** | IRI |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every kraj matches exactly one NUTS 3 region. |
+| **Status** | reused (skos) |
+
+: {tbl-colwidths="[22,78]"}
+
+\newpage
+
+# Table `orp_area`
+
+**Realises:** ORP area (`krim:OrpArea`)
+
+An ORP area is a territorial unit of the Czech Republic that is the administrative district of a municipality with extended powers, listed in the Czech Statistical Office's codelist 65 and identified by its four-digit code.
+
+*Not to be confused with / scope:* Not the municipality with extended powers itself (the town of Opava is a municipality; the ORP area is the district its office serves), and not the smaller POU district, which is not modelled. Includes Prague (code 1000), which ČSÚ and RÚIAN list as an ORP area although Prague is not one in law. An ORP area normally lies within one okres; Turnov (5109) spans three.
+
+| Column | Data element | SQL type | Null | Key |
+|---|---|---|---|---|
+| `iri` | ORP area IRI | TEXT | no | UNIQUE |
+| `code` | ORP area code | INTEGER | no | PK |
+| `name_cs` | ORP area name (Czech) | TEXT | no |  |
+| `kraj_code` | kraj | INTEGER | no | FK -> kraj(code) |
+
+: Columns of orp_area {tbl-colwidths="[28,32,12,8,20]"}
+
+## `orp_area.iri`: ORP area IRI
+
+| | |
+|---|---|
+| **Czech name** | IRI |
+| **Definition** | The IRI that identifies the ORP area in the ontology namespace; the join key between the database row and the ontology. |
+| **Property** | (focus node) |
+| **Value domain** | IRI |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every row has exactly one IRI. |
+| **Status** | generated |
+
+: {tbl-colwidths="[22,78]"}
+
+## `orp_area.code`: ORP area code
+
+| | |
+|---|---|
+| **Czech name** | kód správního obvodu ORP |
+| **Definition** | The four-digit code of an ORP area in ČSÚ codelist 65. |
+| **Property** | skos:notation `skos:notation` |
+| **Value domain** | xsd:integer |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every ORP area has exactly one integer code from ČSÚ codelist 65. |
+| **Status** | reused (skos) |
+
+: {tbl-colwidths="[22,78]"}
+
+## `orp_area.name_cs`: ORP area name (Czech)
+
+| | |
+|---|---|
+| **Czech name** | název správního obvodu ORP (česky) |
+| **Definition** | The Czech name of an ORP area as listed in ČSÚ codelist 65, the name of its municipality with extended powers. |
+| **Property** | skos:prefLabel `skos:prefLabel` |
+| **Value domain** | rdf:langString; text in language 'cs' |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every ORP area has exactly one Czech name. |
+| **Status** | reused (skos) |
+
+: {tbl-colwidths="[22,78]"}
+
+## `orp_area.kraj_code`: kraj
+
+| | |
+|---|---|
+| **Czech name** | kraj |
+| **Definition** | A relation that places an ORP area or an okres in the kraj whose territory contains it. |
+| **Scope note** | Not stated for municipalities: a municipality's kraj is reached through its ORP area or its okres, and both branches give the same kraj. |
+| **Property** | in kraj `krim:inKraj` |
+| **Value domain** | code from codelist kraj (14 values, see appendix) |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every ORP area lies in exactly one kraj. |
+| **Status** | draft |
+
+: {tbl-colwidths="[22,78]"}
+
+\newpage
+
+# Table `okres`
+
+**Realises:** okres (`krim:Okres`)
+
+An okres is a territorial unit of the Czech Republic between the municipality and the kraj, defined by Act 51/2020, listed in the Czech Statistical Office's codelist 101 and identified by its five-digit code.
+
+*Not to be confused with / scope:* Not a self-governing unit, and no longer an EU statistical unit (LAU 1 was dropped in 2017; ČSÚ keeps the codes). Not the okres of the repealed Act 36/1960, although most boundaries carried over. The Czech term is kept in English: "district" is ambiguous.
+
+| Column | Data element | SQL type | Null | Key |
+|---|---|---|---|---|
+| `iri` | okres IRI | TEXT | no | UNIQUE |
+| `code` | okres code | INTEGER | no | PK |
+| `name_cs` | okres name (Czech) | TEXT | no |  |
+| `kraj_code` | kraj | INTEGER | no | FK -> kraj(code) |
+
+: Columns of okres {tbl-colwidths="[28,32,12,8,20]"}
+
+## `okres.iri`: okres IRI
+
+| | |
+|---|---|
+| **Czech name** | IRI |
+| **Definition** | The IRI that identifies the okres in the ontology namespace; the join key between the database row and the ontology. |
+| **Property** | (focus node) |
+| **Value domain** | IRI |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every row has exactly one IRI. |
+| **Status** | generated |
+
+: {tbl-colwidths="[22,78]"}
+
+## `okres.code`: okres code
+
+| | |
+|---|---|
+| **Czech name** | kód okresu |
+| **Definition** | The five-digit code of an okres in ČSÚ codelist 101. |
+| **Property** | skos:notation `skos:notation` |
+| **Value domain** | xsd:integer |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every okres has exactly one integer code from ČSÚ codelist 101. |
+| **Status** | reused (skos) |
+
+: {tbl-colwidths="[22,78]"}
+
+## `okres.name_cs`: okres name (Czech)
+
+| | |
+|---|---|
+| **Czech name** | název okresu (česky) |
+| **Definition** | The Czech name of an okres as listed in ČSÚ codelist 101. |
+| **Property** | skos:prefLabel `skos:prefLabel` |
+| **Value domain** | rdf:langString; text in language 'cs' |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every okres has exactly one Czech name. |
+| **Status** | reused (skos) |
+
+: {tbl-colwidths="[22,78]"}
+
+## `okres.kraj_code`: kraj
+
+| | |
+|---|---|
+| **Czech name** | kraj |
+| **Definition** | A relation that places an ORP area or an okres in the kraj whose territory contains it. |
+| **Scope note** | Not stated for municipalities: a municipality's kraj is reached through its ORP area or its okres, and both branches give the same kraj. |
+| **Property** | in kraj `krim:inKraj` |
+| **Value domain** | code from codelist kraj (14 values, see appendix) |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every okres lies in exactly one kraj. |
+| **Status** | draft |
+
+: {tbl-colwidths="[22,78]"}
 
 \newpage
 
@@ -89,6 +319,8 @@ A municipality is a territorial unit of the Czech Republic listed in the Czech S
 | `code` | municipality code | INTEGER | no | PK |
 | `name_cs` | municipality name (Czech) | TEXT | no |  |
 | `definition_en` | definition | TEXT | yes |  |
+| `orp_area_code` | ORP area | INTEGER | no | FK -> orp\_area(code) |
+| `okres_code` | okres | INTEGER | no | FK -> okres(code) |
 
 : Columns of municipality {tbl-colwidths="[28,32,12,8,20]"}
 
@@ -145,6 +377,36 @@ A municipality is a territorial unit of the Czech Republic listed in the Czech S
 | **Cardinality** | 0..1 |
 | **Business rule** | A municipality has at most one English definition. |
 | **Status** | reused (skos) |
+
+: {tbl-colwidths="[22,78]"}
+
+## `municipality.orp_area_code`: ORP area
+
+| | |
+|---|---|
+| **Czech name** | správní obvod ORP |
+| **Definition** | A relation that places a municipality in the ORP area whose territory contains it. |
+| **Scope note** | Given by ČSÚ's relation between codelists 43 and 65; every municipality lies in exactly one ORP area. |
+| **Property** | in ORP area `krim:inOrpArea` |
+| **Value domain** | code from codelist orp\_area (206 values, see appendix) |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every municipality lies in exactly one ORP area. |
+| **Status** | draft |
+
+: {tbl-colwidths="[22,78]"}
+
+## `municipality.okres_code`: okres
+
+| | |
+|---|---|
+| **Czech name** | okres |
+| **Definition** | A relation that places a municipality in the okres whose territory contains it. |
+| **Scope note** | Given by ČSÚ's relation between codelists 43 and 101, the one link ČSÚ maintains by hand. Not stated for ORP areas: that an ORP area lies within one okres is a soft rule checked through its municipalities (Turnov is the known exception). |
+| **Property** | in okres `krim:inOkres` |
+| **Value domain** | code from codelist okres (77 values, see appendix) |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every municipality lies in exactly one okres. |
+| **Status** | draft |
 
 : {tbl-colwidths="[22,78]"}
 
@@ -971,11 +1233,29 @@ Allowed values of the codelist columns, from the SKOS reference data. Labels in
 Czech come from the publisher; English labels and definitions are maintained in
 `ontology/reference/codelist-texts.csv`.
 
+## `kraj`
+
+14 kraje: the standard codelist of the Czech Statistical Office, ČSÚ codelist
+100 (<https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=100>); RÚIAN uses the same
+codes. Not listed here.
+
+## `orp_area`
+
+206 ORP areas (správní obvody obcí s rozšířenou působností): the standard codelist of the Czech Statistical Office, ČSÚ codelist
+65 (<https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=65>); RÚIAN uses the same
+codes. Not listed here.
+
+## `okres`
+
+77 okresy: the standard codelist of the Czech Statistical Office, ČSÚ codelist
+101 (<https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=101>); RÚIAN uses the same
+codes. Not listed here.
+
 ## `municipality`
 
-6258 municipalities and military training areas: the standard codelist of the
-Czech Statistical Office, ČSÚ codelist 43 (<https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=43>);
-RÚIAN uses the same codes. Not listed here.
+6258 municipalities and military training areas: the standard codelist of the Czech Statistical Office, ČSÚ codelist
+43 (<https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=43>); RÚIAN uses the same
+codes. Not listed here.
 
 ## `clearance_state`
 

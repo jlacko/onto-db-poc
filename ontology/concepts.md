@@ -156,8 +156,7 @@ path:    krim:inOrpArea
 object:  krim:OrpArea
 count:   1..1
 inverse: 1..*
-shape:   none
-reason:  not modelled yet (iteration 3)
+shape:   krim:MunicipalityShape
 ```
 
 ### S9: A municipality lies in exactly one okres; an okres has one or more municipalities.
@@ -175,8 +174,7 @@ path:    krim:inOkres
 object:  krim:Okres
 count:   1..1
 inverse: 1..*
-shape:   none
-reason:  not modelled yet (iteration 3)
+shape:   krim:MunicipalityShape
 ```
 
 ### S10: An ORP lies in exactly one kraj; a kraj has one or more ORPs.
@@ -192,8 +190,7 @@ path:    krim:inKraj
 object:  krim:Kraj
 count:   1..1
 inverse: 1..*
-shape:   none
-reason:  not modelled yet (iteration 3)
+shape:   krim:OrpAreaShape
 ```
 
 ### S11: An okres lies in exactly one kraj; a kraj has one or more okresy.
@@ -210,8 +207,7 @@ path:    krim:inKraj
 object:  krim:Kraj
 count:   1..1
 inverse: 1..*
-shape:   none
-reason:  not modelled yet (iteration 3)
+shape:   krim:OkresShape
 ```
 
 ### S12: An ORP lies within one okres; an okres has one or more ORPs.

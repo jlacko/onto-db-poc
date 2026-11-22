@@ -21,6 +21,14 @@ from rdflib.namespace import DCTERMS
 from dictionary import FIELDS, build_rows, clean, codelists, context, curie, lang_value, table_definitions
 
 
+# Territorial codelists maintained by ČSÚ: the dictionary points to them instead of listing them.
+CZSO_CODELISTS = {
+    "municipality": ("municipalities and military training areas", 43),
+    "orp_area": ("ORP areas (správní obvody obcí s rozšířenou působností)", 65),
+    "okres": ("okresy", 101),
+    "kraj": ("kraje", 100),
+}
+
 def deprecated_terms(ctx, rows) -> list[dict]:
     """Deprecated ontology terms, their replacements, and whether a column still realises them."""
     g, out = ctx.onto, []
@@ -78,7 +86,7 @@ def to_xlsx(rows, codes, ctx, path):
     ws = wb.create_sheet("Codelists")
     sheet(ws, ["Codelist", "Code", "Label (cs)", "Label (en)", "Broader code", "Definition", "Comments"],
           [[name, i["code"], i["label_cs"], i["label_en"], i["broader"], i["definition_en"], ""]
-           for name, items in codes.items() if name != "municipality" for i in items],
+           for name, items in codes.items() if name not in CZSO_CODELISTS for i in items],
           [20, 8, 40, 45, 10, 60, 40])
 
     ws = wb.create_sheet("Deprecated")
@@ -205,10 +213,11 @@ def to_qmd(rows, codes, ctx) -> str:
           "`ontology/reference/codelist-texts.csv`.", ""]
     for name, items in codes.items():
         o += [f"## `{name}`", ""]
-        if name == "municipality":  # 6,258 items: point to the standard codelist instead
-            o += [f"{len(items)} municipalities and military training areas: the standard codelist of the",
-                  "Czech Statistical Office, ČSÚ codelist 43 (<https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=43>);",
-                  "RÚIAN uses the same codes. Not listed here.", ""]
+        if name in CZSO_CODELISTS:  # a standard codelist: point to it instead of listing it
+            what, kodcis = CZSO_CODELISTS[name]
+            o += [f"{len(items)} {what}: the standard codelist of the Czech Statistical Office, ČSÚ codelist",
+                  f"{kodcis} (<https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis={kodcis}>); RÚIAN uses the same",
+                  "codes. Not listed here.", ""]
             continue
         if any(i["broader"] for i in items):
             o += ["| Code | Label (cs) | Label (en) | Broader |", "|---|---|---|---|"]
