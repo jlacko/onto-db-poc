@@ -613,6 +613,9 @@ def check_cq(rep: Report):
         if exp["expected"] is None and not exp.get("pending"):
             rep.add("INFO", f"{cq}: no expected block (gap or not testable)")
             continue
+        if not rq.exists() and not sq.exists():
+            rep.add("PENDING", f"{cq}: no SPARQL or SQL query yet (written with the sample data, Step 8)")
+            continue
         sparql = sql = None
         try:
             if rq.exists():
