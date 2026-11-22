@@ -1,0 +1,7 @@
+# CQ12 Most-specific types among records reported in February 2025.
+SELECT ?type (COUNT(?r) AS ?records) WHERE {
+  ?r krim:hasOffenceType ?t ; krim:reportDateTime ?dt .
+  FILTER(SUBSTR(STR(?dt), 1, 7) = "2025-02")
+  FILTER NOT EXISTS { ?r krim:hasOffenceType ?narrower . ?narrower skos:broader+ ?t }
+  ?t skos:notation ?type .
+} GROUP BY ?type

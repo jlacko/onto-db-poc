@@ -1,0 +1,5 @@
+# CQ10 Share of records recorded by municipal police.
+SELECT (COUNT(?r) AS ?records) (SUM(?m) AS ?municipal) (SUM(?m) / COUNT(?r) AS ?share) WHERE {
+  ?r a krim:OffenceRecord ; krim:recordedByMunicipalPolice ?mp .
+  BIND(IF(?mp, 1, 0) AS ?m)
+}

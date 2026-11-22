@@ -1,0 +1,4 @@
+rdflib>=7.1
+pyshacl>=0.30
+owlready2>=0.47
+openpyxl>=3.1

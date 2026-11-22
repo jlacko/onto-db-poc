@@ -1,0 +1,4 @@
+# CQ05 Records per clearance state.
+SELECT ?state (COUNT(?r) AS ?records) WHERE {
+  ?r a krim:OffenceRecord ; krim:hasClearanceState/skos:notation ?state .
+} GROUP BY ?state

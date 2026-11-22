@@ -1,0 +1,451 @@
+---
+title: "Ontology-first database: lessons learned"
+subtitle: "The LLM ontology method, tested against *Building and Running Ontologies with LLMs*"
+date: 2026-11-21
+format:
+  pdf:
+    documentclass: scrartcl
+    papersize: a4
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    colorlinks: true
+    mainfont: "Noto Serif"
+    sansfont: "Noto Sans"
+    monofont: "Noto Sans Mono"
+    fontsize: 10pt
+    geometry: margin=2.2cm
+    code-block-font-size: \footnotesize
+    include-in-header:
+      text: |
+        \usepackage{fvextra}
+        \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}
+---
+
+# Summary
+
+The baseline is the guide *Building and Running Ontologies with LLMs*
+(`llm-readable-ontologies.pdf`). The proof of concept followed its recommended
+sequence (competency questions, reuse survey, skeleton, definitions, validation
+loop, test suite) for a real public dataset: Police CR offence records. It ended
+with a generated SQLite schema and a continuous, duplicate-free history of
+1.38 million records for 2025.
+
+Six lessons stand out:
+
+1. **The guide's central claim holds.** A mechanical validation loop catches
+   errors that a plausible-looking LLM-written ontology hides. In this project it
+   caught eight, none of which a reader would have noticed.
+2. **The loop checks form, not meaning.** The two serious semantic errors (what
+   the timestamp means, and treating the publisher's monthly download files as a
+   domain concept) were caught by a human, not by any tool.
+3. **Exploring the source first biases the model toward the source's
+   packaging.** The competency questions were drafted after reading the API, and
+   four of them inherited its monthly pagination. The guide's "start from
+   questions, not classes" needs a sharper form: start from what users ask, not
+   from how the data is delivered.
+4. **Two query layers beat one.** Answering every competency question in SPARQL
+   *and* SQL and requiring the results to match found a silent tooling failure
+   that would otherwise have reported zero burglaries. The guide does not
+   suggest this.
+5. **SHACL really is the bridge to the data model**, as the guide says (part
+   III). Generating the DDL from the shapes worked with a ~170-line interpreter
+   and a handful of mapping hints.
+6. **The data dictionary needs more than the guide implies.** "The IRI is the
+   join key" is necessary but not sufficient: reused generic vocabulary makes
+   the dictionary vaguer, unless data elements get their own domain names and
+   definitions. Fixed here with names and local definitions on the shapes, and a
+   completeness rule in the validation loop.
+
+# Practice by practice
+
+Verdicts: **Confirmed** (worked as described), **Adapted** (worked with
+changes), **Extended** (worked, and needed something the guide does not
+mention), **Not tested**.
+
+## Practice 1: Start from competency questions (Confirmed, Extended)
+
+*Guide:* draft 15–30 questions, edit them, treat them as the spec; later they
+become SPARQL tests.
+
+*What happened:* 17 questions were drafted (19 after the revision described below) after exploring the source (not
+before: the questions only became concrete once the data shape was known). Two
+extensions proved valuable:
+
+- **Each question carries a *Decision*.** Writing "how many misdemeanours?"
+  forces a choice: is a misdemeanour "any type under code 97"? Recording the
+  decision next to the question turns hidden modelling choices into reviewable
+  text.
+- **Expected answers live in the spec, written by the human.** The
+  `expected` blocks in the Markdown are parsed by the validator. Key questions
+  are left for the domain expert to answer by hand from the sample data (CSV, in a spreadsheet).
+  Answering by hand is the fastest way to discover that a question is
+  ambiguous.
+
+*What went wrong:* because the questions were drafted after studying the API,
+four of them grouped records by the month of the download file, and the
+ontology dutifully contained a `krim:MonthlyExtract` class with a mandatory
+link from every record. Everything was internally consistent, so every check
+passed. The domain expert, reading the questions, saw that the monthly split is
+mere pagination and restated the goal: a continuous history, one record per
+occurrence, latest state only. The model lost three terms and gained
+`krim:stateAsOf` and a uniqueness rule; four questions were rephrased and two
+added (no duplicates, no holes in the calendar).
+
+*Lessons:* the guide's "questions become tests" is right, but the test needs an
+**independent expected answer**: a query checked only against itself proves
+nothing. And the questions must be **reviewed by someone who knows why the data
+looks the way it does**: the questions, not the Turtle, are where a domain
+expert spots a wrong model fastest. This review cost minutes; it changed the
+ontology, the schema, the loader and the tests.
+
+*Sample data as CSV, not Markdown.* The sample records were first rendered as
+a Markdown table: readable, but the expert had to count by eye. The expert
+asked for CSV instead (one file of records, one of offence types with their
+broader type and category) so that the hand answers could be worked out in a
+spreadsheet with filters and lookups. The test data did not change, only its
+form; the CSVs are generated from the same Turtle and checked for drift. The
+general point: the "manual" step of the method is manual *thinking*, not manual
+counting, and the reader should get the tool that supports it. The CSVs first
+pre-computed nothing a question asks; the expert then asked for each record's
+categories as a column, because deriving them through lookups was tedium rather
+than insight. The most-specific type (CQ12) is still left to the reader. Where
+to draw that line is itself a design choice of the worksheet: pre-compute the
+mechanics, leave the judgements.
+
+*A decision needs a test case.* Answering CQ06 by hand ("misdemeanours versus
+the rest"), the expert found the totals did not simply add up and asked whether
+crime and misdemeanour are exclusive. They are not: one record may carry both
+kinds of type. The question gained a third group (*both*), and the decision went
+into the spec and into the open questions (a future misdemeanour class must not
+be declared disjoint from crime). The sample, however, had no record of both
+kinds, so the new column would always be 0 and the test could not tell a right
+rule from a wrong one. A record of both kinds was added, chosen so that it
+changes no answer the expert had already given (state 4 keeps it out of the
+clearance rate; March keeps it out of the February questions). Every decision
+recorded in a question needs at least one sample record that exercises it.
+
+*The human validator is fallible too.* The three-way check (expert by hand,
+SPARQL, SQL) does not presume who is right. A disagreement only says that
+someone is wrong, and resolving it means re-reading the question. So far every
+side has been wrong at least once:
+
+| CQ | Disagreement | Who was wrong | Resolution |
+|---|---|---|---|
+| CQ02 | hand count higher than the queries | the expert: missed the February filter | answer corrected |
+| CQ03 | expert listed two categories the queries omitted | the question: silent about categories whose records are all excluded | decision made explicit |
+| CQ03 | a rate written `.5` failed | the validator: did not parse `.5` | tool fixed (also accepts `0,5`) |
+| CQ06 | totals did not add up | the question: assumed crime and misdemeanour are exclusive | model decision, third group, new sample record |
+| CQ06 | one record counted in all three groups | the question's wording: "exclusive groups" vs "overlapping counts" both plausible | reading made explicit; self-check "groups add up to the month's total" |
+| CQ06 | misdemeanours counted as *both* | the data presentation: the `types` column lists subgroups of 97 that look like other codes | answer corrected using the `categories` column |
+| CQ12 | rows typed without the `\|` separator | the expert: the format rule was explicit; the failure was correct | answer corrected; the LLM had loosened the validator to accept it, and that change was reverted |
+| CQ12 | one type on two rows | the expert: "per type" means one row per type with the total | answer corrected; the validator now flags repeated keys |
+| CQ13 | one row per record instead of one per record and category | the question: the answer shape was stated in one terse sentence | decision extended with the rule and a made-up example |
+| CQ13 | correct rows reported as "differing" | the validator: lined rows up by record although several rows share a record | hint fixed to compare whole rows (what passes unchanged) |
+
+: Disagreements while answering by hand {tbl-colwidths="[8,30,32,30]"}
+
+*Do not bend the checker to fit the answer.* When the CQ12 answer lacked the
+required `|` separators, the LLM's first reaction was to make the validator
+accept spaces as well, so the answer would pass. The expert pointed out that
+the separator was mandatory and the failure was the correct result: making the
+check more lenient silently changed the spec to fit one answer. The leniency
+was reverted; the check still fails, now with a precise hint. The line between
+fixing the checker and bending it: accepting `.5` for `0.5` fixed a parser bug,
+because the format never specified how to write numbers; accepting a missing
+separator broke a rule the format did specify. A checker may explain a failure
+better, but it must not change what counts as a pass.
+
+All five hand-answered questions (CQ02, CQ03, CQ06, CQ12, CQ13) passed in the
+end, after ten disagreements: three slips by the expert, five imprecise
+questions or data presentations, and two faults of the validator. None of them
+would have been found by running the queries alone.
+
+A method that treats the expert as an oracle would have "fixed" the queries to
+match the CQ02 slip; one that treats the queries as the oracle would have
+missed both CQ03 and CQ06 problems. The value lies in the disagreement, not in
+any single answer.
+
+*The validator must not leak the answer.* On the expert's first partial answer,
+the validator printed the queries' full result on failure, which gave away the
+columns not yet worked out. An expected answer is only independent if the
+expert has not seen the computed one. For questions marked for hand answering,
+failures now say only *where* the answer disagrees (missing columns, rows with
+no counterpart, which columns differ, row counts) and confirm the filled
+columns that agree; the values appear only with an explicit `--show-answers`.
+
+## Practice 2: An LLM-friendly source format (Adapted)
+
+*Guide:* Turtle for OWL, or LinkML for class/slot/enum models.
+
+*What happened:* Turtle + SHACL was chosen for transparency, even though the
+model is exactly the kind the guide recommends LinkML for. The cost was a
+home-made generator (shapes $\rightarrow$ relational model $\rightarrow$ DDL, ~290 lines), which
+LinkML would have provided. The benefit was that every mapping rule is visible
+and testable, which suits learning.
+
+*Lesson:* for learning, Turtle exposes the machinery; for production, LinkML
+would remove most of the generator code. Either way, keep a small namespace of
+**mapping hints** (`kdb:table`, `kdb:column`, `kdb:sourceField`) separate from
+the meaning. Mixing database names into the ontology would violate the guide's
+concept / data-element distinction.
+
+## Practice 3: Write for natural-language readers (Confirmed)
+
+*Guide:* label, genus–differentia definition, example, scope note; readable
+local names.
+
+*What happened:* every term has English and Czech labels, a definition, a
+status and, where it mattered, a scope note and a source. The lint check
+enforces this mechanically, including the genus–differentia opening ("A … is
+a …").
+
+*Lesson:* **scope notes earned their keep more than definitions.** The useful
+statements were negative ones: the record is not the act; the coordinate is
+not the true place; the timestamp is not the time of commission; the offence
+type is not a legal qualification. Each one prevents a plausible
+misinterpretation by a later reader, human or LLM.
+
+## Practice 4: Reuse before inventing (Confirmed, with a caveat)
+
+*Guide:* reuse SKOS, PROV-O, Dublin Core, etc.; link external sources with
+`skos:exactMatch`.
+
+*What happened:* SKOS (codelists), DCTERMS, DCAT, PROV-O, WGS84 and VS were
+reused. The publisher's own codelist IRIs were linked with `skos:exactMatch`
+rather than adopted, because they do not resolve and contain a typo
+(`/dowloads/`) and a version segment.
+
+*Caveats the guide does not mention:*
+
+- **Reuse dilutes the data dictionary.** The column `offence_record.id` realises
+  `dcterms:identifier`, whose definition is generic. For the dictionary, the
+  column needs a domain data element ("record id: integer assigned by the
+  publisher, stable across downloads and refreshes"). Specific sub-properties
+  (`krim:anonymisedLatitude`, a sub-property of `geo:lat`) are the better pattern: reuse the
+  parent, own the meaning.
+- **Reused vocabularies need OWL declarations** (`a owl:AnnotationProperty`,
+  `a owl:DatatypeProperty`) for DL tools to accept them, which is boilerplate an
+  LLM easily forgets.
+
+## Practice 5: Keep axioms modest and validate mechanically (Confirmed, Extended)
+
+*Guide:* lean OWL + SHACL; reasoner after every change; robot report; CQ
+SPARQL tests.
+
+*What the loop caught:*
+
+| # | Finding | Caught by |
+|---|---|---|
+| 1 | `xsd:gYearMonth`, then `xsd:date`, are not in the OWL 2 datatype map: the ontology was not valid OWL 2 DL | HermiT |
+| 2 | `sh:severity Warning` on a node shape is not inherited by its property shapes; a "should" rule fired as an error | a deliberate warning case in the sample data |
+| 3 | rdflib's SPARQL parser mishandles `krimc:type\/18`; queries matched nothing, silently | SPARQL-vs-SQL parity |
+| 4 | the RDF$\rightarrow$SQL loader read foreign-key codes from the wrong node | NOT NULL generated from `sh:minCount 1` |
+| 5 | the property meant "time of report", not "time of the incident" | **human**, with publisher documentation |
+| 6 | the meaning of the field `mp` was undocumented | LLM reading the OpenAPI description |
+| 7 | the publisher's OpenAPI labels `x` as latitude and `y` as longitude (reversed) | LLM comparing the description with the data |
+| 8 | SPARQL 1.1 has no weekday function | CQ16 test design |
+| 9 | the publisher's monthly pagination was modelled as a domain concept; questions grouped by it | **human**, reading the competency questions |
+| 10 | a uniqueness rule between two nodes flags *both*; the negative-test harness first reported the partner as unexpected | negative test with a duplicate identifier |
+| 11 | the SHACL-SPARQL uniqueness rule is quadratic: 1,000 records in 24 s, 5,000 in about ten minutes; at scale, identity belongs to the primary key, SHACL to samples | timing the real-data check |
+| 12 | the sample had no record that is both crime and misdemeanour, so the test for the "not exclusive" decision could not fail | **human**, answering CQ06 by hand |
+
+: Findings of the validation loop {tbl-colwidths="[4,66,30]"}
+
+*Extensions that mattered:*
+
+- **Negative tests for every check.** The reasoner must find a contradictory
+  individual inconsistent; each invalid individual must fail *for the stated
+  reason*. Without them, a check that silently passes everything looks the
+  same as a check that works.
+- **Parity of two query languages.** The same question in SPARQL (on RDF) and
+  SQL (on the generated database, loaded from the same RDF) must agree. This
+  tests the ontology, the shapes, the DDL generator and the loader at once.
+- **Drift checks for generated artifacts.** The validator regenerates the DDL
+  and the sample table in memory and fails if the committed files differ.
+
+*Lesson:* the guide's warning list (subclass vs. part-of, duplicates,
+domain/range) did not match the errors actually made. The real LLM failure
+modes here were **standards trivia** (datatype maps, severity inheritance),
+**tool quirks** (SPARQL escapes) and **plausible but wrong meaning**. Only the
+first two are mechanically detectable.
+
+## Practice 6: Small modules under git, with CLAUDE.md (Confirmed)
+
+*What happened:* one core module (228 lines), shapes (255 lines), three
+generated reference modules, and a `CLAUDE.md` recording namespaces, naming
+and definition style, modelling rules and the validation command.
+
+*Lesson:* keep the **generated / hand-edited** distinction explicit in
+`CLAUDE.md` and in file headers. An LLM will otherwise "fix" a generated file
+directly.
+
+## Part II: Sharing with non-technical readers (Confirmed, Adapted)
+
+*Guide:* a business glossary generated from the ontology, never maintained by
+hand: term, meaning, example, not to be confused with, also called; business
+rules as plain sentences; a small concept diagram; stamped with the release.
+
+*What happened:* a Czech glossary (`docs/glossary.pdf`) generated from Czech
+annotations on the ontology terms, with English kept for the internals
+(ontology, shapes, data dictionary). The guide's model worked almost unchanged;
+the adaptations were a PDF table instead of Excel (one reader, presentation
+only) and a language split by audience.
+
+*Lessons:*
+
+- **Two definitions, two audiences, two languages, one concept.** The formal
+  English definition ("A date-time property that gives…") is useless to a
+  business reader; the Czech business definition is a *second definition*, not
+  a translation, so it got its own annotation (`krim:businessDefinition`)
+  rather than `skos:definition@cs`. Both describe the same concept, and the
+  glossary links each entry to its columns in the English dictionary so the two
+  documents cannot silently diverge.
+- **The publisher's terminology beats the modeller's.** Writing the glossary
+  exposed that the ontology's Czech label *typ deliktu* was the LLM's choice,
+  while the publisher says *třída*. The label changed; the English internal
+  name did not.
+- **A native speaker catches what no check can.** The LLM's own Czech coinages
+  were the weak spot: the file name *glosar* was rejected by the human, and a
+  diagram label still said *nadřazený typ* after the term had become *třída*.
+  Completeness can be checked mechanically (every term has a Czech definition);
+  naturalness cannot.
+- **A generated diagram stays honest.** The concept diagram is drawn from the
+  shapes, with Czech names and cardinalities, so it changes when the model
+  changes; a hand-drawn picture would have kept showing the removed monthly
+  extract.
+- **The glossary reveals missing business terms.** The words business readers
+  use most (*přestupek*, *míra objasněnosti*) are not ontology terms yet: they
+  are derived concepts and metrics that depend on decisions in the competency
+  questions. The guide's part III advice to define metrics explicitly is where
+  the glossary's gaps point.
+- **Choose the format by what the reader does with it.** The guide defaults to
+  Excel for business readers. Here the same reader asked for two different
+  formats: a PDF table for the glossary, which is *read*, and CSV for the
+  sample data, which is *worked with* (filtered, looked up, counted). Generating
+  every output from one source makes such switches cheap: each change of form
+  took one small script edit and no change to the ontology.
+
+## Part III: Ontology and data (Confirmed, Extended)
+
+- **Concept / term / data element.** Kept apart: concepts in the ontology,
+  terms as labels, data elements as shapes with `kdb:` hints.
+- **Reference data with the ontology.** Codelists are SKOS concept schemes
+  next to the ontology, and the **database lookup tables are filled from them**,
+  not from the CSV. This is the strongest demonstration of "single source of
+  truth" in the project.
+- **SHACL $\rightarrow$ DDL.** NOT NULL, foreign keys, CHECK constraints, link tables and a
+  hierarchy closure view all came from the shapes. Warnings were deliberately
+  *not* enforced in the schema; the loader reports them instead.
+- **Data dictionary.** See section 4.
+
+## Part IV: Lifecycle (Partly tested)
+
+`owl:versionIRI` and `owl:versionInfo` are set; the schema records the release
+it realises (`meta_release`). One lifecycle rule was exercised twice for real:
+a property was renamed, and three terms (the monthly extract) were removed,
+only because 0.1.0 was unreleased; after a release both would require
+deprecation (`owl:deprecated`, `dcterms:isReplacedBy`) and a major version.
+
+The guide's **two time axes** turned up inside the data as well. Records are
+republished as investigations progress, so each record has a *report time*
+(when the act was reported) and an *observation time* (`krim:stateAsOf`, when
+the publisher reported the state we hold). Keeping only the latest state is a
+deliberate simplification; it makes every clearance rate an "as of" figure,
+which the dictionary and CQ11 now state explicitly.
+
+Not yet tested: `owl:priorVersion`, release bundles, named graphs, effective
+dating of reference data.
+
+# Lessons on the data dictionary (a key output)
+
+The guide states that "the IRI is the join key" and that every table column
+should carry its concept's IRI. The first version of the dictionary did only
+that, and it was not usable: a list of IRIs and rules, with generic meanings
+for half the columns. The second version (34 data elements, 19 fields each,
+exported as database table, CSV, Excel and PDF) showed what a usable dictionary
+needs:
+
+1. **Generate it; do not write it.** Every field a dictionary needs already
+   exists in the ontology and shapes (table 1). A hand-written dictionary would
+   drift from the schema on the first change.
+2. **ISO/IEC 11179 maps cleanly onto SHACL.** Object class = `sh:targetClass`,
+   property = `sh:path`, value domain = `sh:datatype` / `sh:class` / ranges /
+   pattern, plus cardinality and the plain-language rule.
+3. **Reused properties need a local data-element name and definition.** A
+   column pointing to `skos:prefLabel` or `dcterms:identifier` tells a reader
+   almost nothing. Use `sh:name` and `sh:description` on the shape, or a
+   specific sub-property, to give the data element its own meaning.
+4. **Codelist columns should expand to their codes.** For a column like
+   `clearance_state_code`, the dictionary should list the allowed codes and
+   their labels. The reference data makes this automatic.
+5. **Source lineage belongs in the dictionary.** `kdb:sourceField` turned out
+   to be essential twice: to drive the loader generically, and to document that
+   the publisher's `x` is longitude despite their own description.
+6. **Make completeness a validation rule.** Once the loop failed on any column
+   without Czech and English names, a definition, a value domain and a rule,
+   the gaps closed in one pass and cannot silently reopen.
+7. **Stamp it with the release.** As with the guide's glossary, a printed
+   dictionary must name the ontology version it describes.
+
+| Dictionary field | Source |
+|---|---|
+| table, column | `kdb:table`, `kdb:column` |
+| object class, property | `sh:targetClass`, `sh:path` |
+| data-element name, rule | `sh:name`, `sh:description` |
+| label, definition, scope note | ontology term behind `sh:path` |
+| value domain, allowed codes | `sh:datatype`, `sh:class` + SKOS scheme, ranges, pattern |
+| cardinality | `sh:minCount`, `sh:maxCount` |
+| source field | `kdb:sourceField` |
+| status, version | `vs:term_status`, `owl:versionInfo` |
+
+: Table 1: a complete data dictionary, assembled from existing sources {tbl-colwidths="[40,60]"}
+
+# Lessons about working with an LLM
+
+- **The LLM was most useful for reconnaissance and boilerplate.** It reverse
+  engineered undocumented API endpoints from the web app's JavaScript, read
+  Czech documentation, wrote 142 English labels, and produced consistent
+  definitions and shapes quickly.
+- **Its errors were confident and plausible.** All twelve findings were
+  introduced or missed by the LLM. The defence was not a more careful LLM but
+  the loop: every error surfaced within one validation run of being made.
+- **It models what it sees.** Given an API organised in monthly files, it
+  produced a monthly-file concept and month-based questions, without asking
+  whether the months meant anything. A one-line question to the human ("is the
+  monthly split meaningful?") would have avoided a model revision.
+- **It fills documentation gaps with assumptions.** The timestamp's meaning
+  and the `mp` flag were first *assumed*. The useful habit was to mark each
+  assumption explicitly (scope note, editorial note, open question for the
+  expert) so it can be found and confirmed later.
+- **The human's leverage is in three places:** choosing the scope and the
+  questions, supplying domain sources (documentation, earlier projects), and
+  answering questions by hand. The project took four such interventions (use
+  Python; here is the documentation; I want to answer CQs myself; the months are
+  only pagination), and each one changed the result. The last one changed it
+  most.
+- **Its Czech is grammatical but not native.** Plain definitions and labels it
+  wrote need review by a native speaker; the publisher's labels are the safe
+  source, and the glossary uses them wherever they exist.
+- **Mid-course corrections are cheap when everything is generated.** Renaming
+  a property touched the ontology, shapes, tests and queries in one pass;
+  regenerating the DDL and rerunning the loop confirmed nothing else broke.
+
+# Recommendations for the next version of the guide
+
+1. Add **negative tests** to practice 5: every check must be shown to fail.
+2. Recommend **expected answers written by the domain expert** for CQ tests,
+   and **two query layers** (SPARQL and SQL) where a database is the target.
+3. Add to the list of typical LLM errors: **OWL 2 datatype-map violations**,
+   **SHACL severity scope**, and **meaning assumed from field names**.
+4. In part III, say how to handle **reused generic properties in the data
+   dictionary** (local data-element names, or specific sub-properties).
+5. Mention **source reconnaissance** as a step before competency questions
+   when the ontology describes an existing dataset, **with a warning**: the
+   source's packaging (pagination, file splits, API resources) is not the
+   domain. Ask the domain expert which structures of the source carry meaning.
+6. Distinguish **report time and observation time** for any data that is
+   republished as it develops; the guide's two time axes (part IV) apply to the
+   data, not only to the ontology release.
+7. Recommend **drift checks** for every generated artifact (DDL, dictionary,
+   glossary), run inside the validation loop.

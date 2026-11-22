@@ -1,0 +1,5 @@
+# CQ07 Records inside 50.0-50.2 N, 14.2-14.7 E.
+SELECT ?record WHERE {
+  ?r dcterms:identifier ?record ; krim:anonymisedLatitude ?lat ; krim:anonymisedLongitude ?lon .
+  FILTER(?lat >= 50.0 && ?lat <= 50.2 && ?lon >= 14.2 && ?lon <= 14.7)
+}

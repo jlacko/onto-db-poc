@@ -1,0 +1,6 @@
+# CQ14 Labels and definition of clearance state 2.
+SELECT ?code ?label_cs ?label_en ?definition WHERE {
+  ?s a krim:ClearanceState ; skos:notation ?code ; skos:prefLabel ?cs , ?en ; skos:definition ?definition .
+  FILTER(?code = 2 && LANG(?cs) = "cs" && LANG(?en) = "en")
+  BIND(STR(?cs) AS ?label_cs) BIND(STR(?en) AS ?label_en)
+}

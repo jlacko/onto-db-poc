@@ -1,0 +1,5 @@
+# CQ01 Records per calendar month of report (local date as published). Prefixes are added by validate.py.
+SELECT ?month (COUNT(?r) AS ?records) WHERE {
+  ?r a krim:OffenceRecord ; krim:reportDateTime ?dt .
+  BIND(SUBSTR(STR(?dt), 1, 7) AS ?month)
+} GROUP BY ?month

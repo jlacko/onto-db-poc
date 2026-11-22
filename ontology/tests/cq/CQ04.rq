@@ -1,0 +1,4 @@
+# CQ04 Direct or indirect subtypes of category 1.
+SELECT ?type WHERE {
+  ?t skos:broader+ ktype:1 ; skos:notation ?type .
+}

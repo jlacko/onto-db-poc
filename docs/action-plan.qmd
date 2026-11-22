@@ -1,0 +1,590 @@
+---
+title: "Ontology-first database: action plan"
+subtitle: "From toolchain to a populated SQLite database of Czech crime data"
+date: 2026-11-21
+format:
+  pdf:
+    documentclass: scrartcl
+    papersize: a4
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    colorlinks: true
+    mainfont: "Noto Serif"
+    sansfont: "Noto Sans"
+    monofont: "Noto Sans Mono"
+    fontsize: 10pt
+    geometry: margin=2.2cm
+    code-block-font-size: \footnotesize
+    include-in-header:
+      text: |
+        \usepackage{fvextra}
+        \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}
+        \usepackage{longtable}
+---
+
+# Purpose and scope
+
+This proof of concept tests the ontology-first approach described in
+*Building and Running Ontologies with LLMs* (`llm-readable-ontologies.pdf`,
+hereafter "the guide"). **The primary aim is learning**: does the method hold
+up in practice, and where does an LLM (Claude Code) help or hurt? The database
+is the secondary aim. It is the test that the ontology can actually drive a
+data model.
+
+Key outputs, in order of importance:
+
+1. the **ontology**: concepts, definitions, reference data, in Turtle;
+2. the **SHACL shapes**: data rules in plain sentences, and the source of the schema;
+3. the **data dictionary** (English, technical): every column tied to the
+   concept it records, generated as a database table, CSV, Excel and PDF;
+4. the **business glossary** (Czech): the same concepts in business words,
+   generated as a PDF;
+5. the **validation loop and test suite**: competency questions answered three ways;
+6. the **SQLite database**: generated schema, populated from the Police CR API.
+
+The domain is the open data of the Police of the Czech Republic,
+*Mapa kriminality* (`kriminalita.policie.gov.cz`): offence records with
+anonymised locations, offence types, clearance states and location relevance.
+The goal is a **continuous history** of these records for one report year
+(2025 in the proof of concept): one row per occurrence, in its latest known
+state, regardless of how the publisher splits the downloads.
+
+# Toolchain
+
+| Component | Version | Role |
+|---|---|---|
+| Python | 3.14 (venv `.venv`) | all scripts; the user asked for a Python approach (the earlier R project served only as an API reference) |
+| rdflib | 7.6 | parsing Turtle, SPARQL queries, building RDF |
+| pySHACL | 0.40 | SHACL validation, including SPARQL-based constraints |
+| owlready2 + HermiT | 0.51 | OWL 2 DL reasoning (consistency); HermiT runs on Java |
+| OpenJDK | 21 | runtime for HermiT |
+| SQLite | 3 (stdlib `sqlite3`) | target database |
+| Quarto + TinyTeX | 1.6 | these documents, the data dictionary and the glossary |
+| Graphviz | 14 | the concept diagram in the glossary, generated from the shapes |
+| git + `CLAUDE.md` | | versioning; conventions every Claude session follows |
+
+: Toolchain {tbl-colwidths="[20,20,60]"}
+
+**Decisions taken and why.**
+
+- *Turtle + SHACL rather than LinkML.* The guide recommends LinkML for models
+  that are mostly classes, slots and enums, and this one is. Turtle was chosen
+  anyway because it keeps every step visible: OWL for meaning, SKOS for
+  reference data, SHACL for rules, and our own small generator for DDL. That
+  suits a learning project. LinkML remains a sensible choice for production.
+- *Python lint instead of ROBOT.* `robot report` (labels, definitions,
+  duplicates) was replaced by about 80 lines of rdflib code in `validate.py`, to
+  keep a single-language toolchain. HermiT is still used, through owlready2.
+- *Placeholder namespace.* `https://example.org/kriminalita/...`, to be
+  replaced before any publication. After that it never changes (guide, part IV).
+
+Setup:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+```
+
+# Reconnaissance of the source
+
+Before modelling anything, the source was explored. This is not a step in the
+guide, but in practice it came first, and it shaped the competency questions.
+
+| Endpoint | Content |
+|---|---|
+| `GET /api/v2/downloads` | list of 179 monthly download files (2012-01 to 2026-11), each with an `updated` timestamp |
+| `GET /api/v2/downloads/{YYYYMM}.zip` | CSV of records, plus codelists and readme |
+| `GET /api/v2/downloads/{types,states,relevance}.json` | codelists as JSON-LD in the Czech open-data codelist format (OFN "číselník"), **with an IRI per item** |
+| `/api/v2/docs.json` | OpenAPI description (explains the `mp` field indirectly) |
+| `/napoveda/` | user documentation in Czech (explains the timestamp) |
+
+: Source endpoints {tbl-colwidths="[40,60]"}
+
+Facts that mattered for modelling:
+
+- The CSV has **one row per record and offence type**, and a record carries a
+  type *together with all its broader types* (e.g. `18, 19` = Burglary, Burglary
+  of a flat).
+- The type codelist is a **hierarchy** of up to three levels (`parent_id1..3`).
+- Coordinates are **anonymised** to the centres of Voronoi polygons, not true
+  locations.
+- The server gzips responses unasked and **rate-limits** (HTTP 429), the latter
+  known from the R project.
+- Data with locations exist from about mid-2013; the R project distrusted data
+  before 2016.
+- The downloads are split by month **only to keep files manageable**; the split
+  has no meaning in the domain (a point the reconnaissance missed; see Step 9).
+- Files are regenerated as investigations progress, so the same record can be
+  published again in a different state.
+
+# Step by step
+
+Each step names who does the work: **H** = human (domain expert), **L** = LLM
+(Claude Code), **S** = script (deterministic, rerunnable).
+
+## Step 1: Competency questions (L drafts, H edits and answers)
+
+File: `ontology/competency-questions.md`. 19 questions in five groups (counting
+and classification; place and time; provenance and vocabulary; identity and
+continuity of the history; known gaps).
+Each question has:
+
+- precise **parameters** (e.g. "category 18 in month 2025-02");
+- a **decision**: the modelling choice the question forces (e.g. "records
+  concluded as *act did not occur* are excluded from the clearance-rate
+  denominator");
+- an **expected answer** block, computed on the sample data.
+
+The questions are an **executable spec**: `validate.py` parses the `expected`
+blocks and compares them with the SPARQL and SQL results. Five key questions
+(CQ02, CQ03, CQ06, CQ12, CQ13) are deliberately left `TODO` for the domain
+expert to answer by hand from the sample data
+(`ontology/tests/sample-records.csv` and `sample-types.csv`, for a spreadsheet). Until answered, they show as *pending*. This
+is the main **manual learning step**: answering a question by hand reveals
+whether it is precise enough.
+
+**Outcome.** All five were answered and pass. Getting there took ten
+disagreements between the expert and the queries: three slips by the expert,
+five imprecise questions or data presentations, and two faults of the
+validator (listed in the lessons-learned document). They produced three
+decisions in the spec (CQ03 omits categories with no remaining records; crime
+and misdemeanour are not exclusive, so CQ06 has a third group; CQ13 spells out
+one row per record and category), *Check* lines that let the answerer verify
+an answer before running the validator, and a validator that, for hand-answered
+questions, says where an answer disagrees but never shows the computed values.
+Because the numbers are identifiers grouped by topic, the file starts with a
+generated numeric index (`scripts/cq_index.py`).
+
+~~~~text
+### CQ02: Records in a category, including subtypes  (your answer)
+Question. How many records fall under category Burglary (code 18),
+including all its subtypes, in month 2025-02?
+Decision. A record counts once, even when tagged with several types.
+
+```expected
+records
+TODO
+```
+~~~~
+
+One question (CQ17, *which municipality?*) is recorded as a **known gap**: the
+national downloads cannot answer it, and the document says what closing the gap
+would take.
+
+## Step 2: Reuse survey (L proposes, H approves)
+
+| Vocabulary | Used for |
+|---|---|
+| SKOS | codelists as concept schemes; labels, definitions, scope notes, hierarchy (`skos:broader`) |
+| Dublin Core terms | identifiers, modification dates, sources |
+| PROV-O | `krim:OffenceRecord` is a `prov:Entity` (an information record, not the act); `krim:stateAsOf` refines `prov:generatedAtTime` |
+| W3C WGS84 | anonymised coordinates are sub-properties of `geo:lat` / `geo:long` |
+| VS (term status) | `vs:term_status` draft / stable on every term |
+| Publisher's codelist IRIs | linked from our concepts with `skos:exactMatch` |
+
+: Reused vocabularies {tbl-colwidths="[30,70]"}
+
+The publisher's own IRIs were *linked*, not *adopted* as concept identifiers:
+they do not resolve, and they contain a typo (`/dowloads/`) and a version
+segment (`/v1/`), both fragile.
+
+## Step 3: Skeleton in Turtle (L)
+
+File: `ontology/kriminalita.ttl`. A lean OWL module of 4 classes and 8 own
+properties (after the revision in Step 9):
+
+| Class | Meaning (abridged) |
+|---|---|
+| `krim:OffenceRecord` | a police record of one act suspected to be a crime or misdemeanour |
+| `krim:OffenceType` | concept in the Police CR offence classification (subclass of `skos:Concept`) |
+| `krim:ClearanceState` | outcome of the police inquiry (subclass of `skos:Concept`) |
+| `krim:LocationRelevance` | what the recorded location stands for (subclass of `skos:Concept`) |
+
+: Classes {tbl-colwidths="[30,70]"}
+
+Properties: `hasOffenceType`, `hasClearanceState`, `hasLocationRelevance`,
+`reportDateTime`, `stateAsOf`, `anonymisedLatitude`, `anonymisedLongitude`,
+`recordedByMunicipalPolice`.
+
+Rules from the guide applied here: **no `rdfs:domain` / `rdfs:range`** (they are
+inference rules, not constraints), plus only two modest axioms for the reasoner
+to check: records and codelist concepts are disjoint, and so are the three
+codelists.
+
+## Step 4: Definitions and annotations (L writes, H reviews)
+
+Every term carries labels in English and Czech, one genus–differentia
+definition, an example where useful, a scope note saying what it does *not*
+cover, a status, and a source when the meaning comes from publisher
+documentation:
+
+```turtle
+krim:reportDateTime
+    a owl:DatatypeProperty ;
+    rdfs:subPropertyOf dcterms:date ;
+    rdfs:label "report date and time"@en , "datum a čas oznámení"@cs ;
+    skos:definition """A date-time property that gives the date and time, to the
+minute and with time zone, at which the recorded act was entered into the
+Police CR register as reported."""@en ;
+    skos:scopeNote """Not the time of commission. ..."""@en ;
+    dcterms:source <https://kriminalita.policie.gov.cz/napoveda/#/rozvrzeni> ;
+    vs:term_status "draft" .
+```
+
+This property was first modelled as *incident date and time*. Domain
+documentation, supplied by the human, showed it is the time of report. Because
+0.1.0 was unreleased it was renamed; after a release it would have needed
+deprecation and a new IRI.
+
+## Step 5: Reference data (S generates, H maintains translations)
+
+`scripts/build_reference.py` downloads the three JSON-LD codelists and writes
+SKOS concept schemes to `ontology/reference/{types,states,relevance}.ttl`:
+142 concepts, each with `skos:notation` (the code), a Czech label, an English
+label, `skos:exactMatch` to the publisher IRI and `skos:broader` for the
+hierarchy. English labels and the definitions of states and relevance live in a
+**hand-maintained CSV** (`codelist-texts.csv`); the Turtle files are generated and
+never edited.
+
+## Step 6: SHACL shapes (L writes, H reviews the sentences)
+
+File: `ontology/shapes.ttl`. One node shape per class. Every property shape
+states its rule as one plain sentence (`sh:description`), which is what a
+non-technical reviewer reads:
+
+```turtle
+sh:property [
+    sh:path krim:hasClearanceState ;
+    sh:description "Every offence record has exactly one clearance state."@en ;
+    sh:class krim:ClearanceState ; sh:minCount 1 ; sh:maxCount 1 ;
+    kdb:column "clearance_state_code" ; kdb:sourceField "state"
+] .
+```
+
+Shapes also carry **database-mapping hints** in a separate `kdb:` namespace
+(table, column, primary key, link table, language columns, CSV source field).
+They carry no meaning; they only tell the generator how to name things.
+
+Two rules are **warnings**, not violations: points should lie inside the Czech
+bounding box, and a record tagged with a type should also carry its broader
+type. These are conventions of the source, not rules of the domain.
+
+## Step 7: Test suite (L builds, H answers CQs)
+
+| File | Content |
+|---|---|
+| `tests/sample-data.ttl` | 13 fictional records covering every CQ and shape (including a record that is both crime and misdemeanour), and one deliberate warning |
+| `tests/sample-records.csv`, `sample-types.csv` | the same data as CSV for a spreadsheet (generated) |
+| `tests/invalid-data.ttl` | 7 individuals, each breaking exactly one rule (including a duplicate identifier), annotated `# expect: <property>` |
+| `tests/cq/CQnn.rq`, `CQnn.sql` | each competency question in SPARQL and SQL (CQ16 and CQ19 SQL only) |
+| `tests/observations/*.csv` | two downloads of the same month observed at different times: the loader's "latest state wins" test |
+
+: Test suite {tbl-colwidths="[30,70]"}
+
+## Step 8: Validation loop (S; run after every change)
+
+```bash
+.venv/bin/python scripts/validate.py
+```
+
+| Check | Passes when |
+|---|---|
+| 1. Parse | all Turtle files parse |
+| 2. Reasoner | HermiT finds ontology + reference + sample data consistent, *and* finds a contradictory individual inconsistent (negative test) |
+| 3. Lint | every term has en/cs labels, one definition, a status; no `rdfs:domain`/`range`; no duplicate labels; every `krim:` term used in shapes, samples and queries is declared; every property shape has a plain-language rule; every column has en/cs names, a definition and a value domain (data dictionary); every business term, code and record rule has its Czech text (glossary) |
+| 4. SHACL | sample data conforms; exactly the expected warning is raised; each negative test (including a duplicate identifier) fails *for the stated reason* |
+| 5. Generated artifacts | `db/schema.sql`, the dictionary, the glossary, the sample CSVs and the CQ index are current; the sample loads into the schema with no FK errors |
+| 6. Competency questions | SPARQL = SQL (parity), and both = the expected answer written in the spec; for hand-answered questions a failure explains where, never the computed values (`--show-answers` prints them) |
+| 7. Loader | the same record observed twice, in either order, ends as one row in the latest state; reloading is idempotent |
+
+: The validation loop {tbl-colwidths="[25,75]"}
+
+The report is written to `build/validation-report.md`.
+
+## Step 9: Domain review (H)
+
+Building the ontology produced six open questions for the domain expert, kept
+in section E of the CQ file (e.g. *what does `mp` mean?*, *is 00:00 a
+placeholder?*, *should "crime vs. misdemeanour" be an explicit class?*). Where
+publisher documentation provided an answer, it is quoted as a *Finding* for the
+expert to confirm or overrule.
+
+### Outcome: a continuous history instead of monthly pages
+
+The most consequential review came from reading the competency questions. Four
+of them grouped records by the month of the download file, because version
+0.1.0 modelled the file as a domain concept (`krim:MonthlyExtract`, with
+`krim:referenceMonth` and a mandatory `krim:publishedIn`). The domain expert
+pointed out that the monthly split is the publisher's pagination, chosen to
+keep files manageable, with no meaning of its own, and set the actual goal: a
+**continuous history** of records, without duplicates, where an occurrence
+first reported as open and later as cleared is one record, not two. Decisions
+taken:
+
+| Question | Decision |
+|---|---|
+| Which state is kept? | Only the latest one; the dataset is "as of" the latest load. |
+| What decides "latest"? | When the publisher generated the data (`updated` stamp of the download), not the order of loading. |
+| What is "a year"? | Report (registration) year; a late-evening report registered the next day counts on the next day. |
+
+: Decisions on the history {tbl-colwidths="[30,70]"}
+
+Applied before the first release (so terms could be removed instead of
+deprecated):
+
+- `krim:MonthlyExtract`, `krim:referenceMonth` and `krim:publishedIn` removed
+  from the ontology, with their shape, table and dictionary entries.
+- `krim:stateAsOf` added: when the publisher reported the state we hold
+  (observation time, kept apart from report time).
+- A uniqueness rule: one identifier, one record (a SHACL-SPARQL constraint, the
+  primary key in SQL, and a negative test with a duplicate).
+- Questions reworked: periods are parameters on report date (month, date range);
+  CQ11 asks "as of when"; new CQ18 (no duplicates) and CQ19 (holes in the
+  calendar).
+- The download files survive only in a technical table (`source_file`) used for
+  incremental refresh, plus `load_run` for the "as of" of the whole database.
+
+## Step 10: DDL generation (S)
+
+```bash
+.venv/bin/python scripts/generate_ddl.py     # writes db/schema.sql
+```
+
+The shapes are read into a small relational model (`scripts/shapes_model.py`)
+using these mapping rules:
+
+| SHACL construct | SQL realisation |
+|---|---|
+| node shape with `kdb:table` | table; `iri` column (NOT NULL UNIQUE) for the focus node |
+| `sh:datatype` | column type (integer $\rightarrow$ INTEGER, decimal $\rightarrow$ REAL, boolean $\rightarrow$ INTEGER + CHECK, dateTime/string $\rightarrow$ TEXT) |
+| `sh:minCount 1` | NOT NULL |
+| `sh:maxCount 1` | single column; without it $\rightarrow$ link table (`kdb:linkTable`) |
+| `sh:class C` | foreign key to the table of the shape targeting C |
+| `sh:minInclusive` / `sh:maxInclusive` | CHECK constraints |
+| `sh:pattern` | CHECK with GLOB (only the patterns used) |
+| `sh:languageIn` + `kdb:languageColumns` | one column per language (`label_cs`, `label_en`) |
+| `sh:node` | inherited property shapes (shared codelist shape) |
+| self-reference (`skos:broader`) | `<table>_ancestor` recursive closure view |
+| severity Warning | **not** enforced in the schema; reported by the loader |
+
+: From shapes to DDL {tbl-colwidths="[38,62]"}
+
+Result: 5 domain tables (`offence_record`, `offence_record_type`,
+`offence_type`, `clearance_state`, `location_relevance`), the view
+`offence_type_ancestor`, two technical tables for the loader (`source_file`,
+`load_run`, declared in `scripts/dictionary.py` and marked *technical* in the
+dictionary), and two metadata tables: `meta_release` (the ontology version the
+schema realises) and `meta_column` (the data dictionary, Step 11).
+
+## Step 11: Data dictionary (S): a key output
+
+The guide (part III) puts the data element between the concept and the
+database column: *object class + property + value domain* (ISO/IEC 11179), with
+"the IRI as the join key". In this project the dictionary is **generated, never
+written by hand**, from three sources that already exist:
+
+| Dictionary column | Comes from |
+|---|---|
+| table, column | `kdb:table`, `kdb:column` in the shapes |
+| concept IRI (property) | `sh:path` |
+| object class IRI | `sh:targetClass` of the node shape |
+| business rule | `sh:description` (plain sentence) |
+| label (en, cs), definition, scope note | the ontology term behind `sh:path` |
+| value domain | `sh:datatype` / `sh:class` (codelist) / ranges / pattern |
+| cardinality, nullability | `sh:minCount` / `sh:maxCount` |
+| source field | `kdb:sourceField` (CSV column) |
+| status, version | `vs:term_status`; `owl:versionInfo` |
+
+: Where each dictionary field comes from {tbl-colwidths="[38,62]"}
+
+It took two passes. **First pass:** `meta_column` held only table, column,
+concept IRI and rule. It revealed four gaps: no names, definitions or value
+domains; generic definitions for columns realised by reused properties; a
+missing link-table owner column; no human-readable export.
+
+**Second pass (current).** The dictionary is built by `scripts/dictionary.py`
+and exported by:
+
+```bash
+.venv/bin/python scripts/generate_dictionary.py --pdf
+```
+
+| Output | For |
+|---|---|
+| `meta_column` table in the database (also in `db/schema.sql`) | queries, BI tools: the dictionary travels with the data |
+| `db/data-dictionary.csv` | machines, diffs in git |
+| `db/data-dictionary.xlsx` | review by domain experts: filterable, with *Comments* and *Agree?* columns (guide, part II) |
+| `docs/data-dictionary.pdf` | reading and printing: per-table overview, per-column details, codelist appendix |
+
+: Data dictionary outputs {tbl-colwidths="[45,55]"}
+
+It covers 34 columns (data elements) with 19 fields each. A manual step
+closed the reused-property gap: every column shape got a Czech name
+(`sh:name "..."@cs`), and shapes whose path is a generic reused property got a
+local data-element definition (`skos:definition` on the shape). For example:
+
+```turtle
+sh:property [
+    sh:path dcterms:identifier ;
+    sh:name "record id"@en , "identifikátor záznamu"@cs ;
+    skos:definition "The publisher's integer identifier of an offence record,
+        stable across the publisher's download files and refreshes."@en ;
+    ...
+```
+
+The validation loop now enforces this: every column must have English and
+Czech names, a definition, a value domain and a business rule, and the CSV and
+Quarto outputs must match a fresh regeneration. The loader refreshes the
+dictionary in an existing database on every run, so it never describes an
+older schema.
+
+One example row, as it appears in the dictionary:
+
+| Field | Value |
+|---|---|
+| Column | `offence_record.clearance_state_code` |
+| Data element | clearance state / stav objasnění |
+| Definition | A relation that assigns its current clearance state to an offence record. |
+| Object class, property | offence record (`krim:OffenceRecord`), `krim:hasClearanceState` |
+| Value domain | code from codelist clearance_state (4 values, see appendix) |
+| Cardinality, key | 1..1, FK to `clearance_state(code)` |
+| Business rule | Every offence record has exactly one clearance state. |
+| Source field, status, release | `state`, draft, 0.1.0 |
+
+: One data element {tbl-colwidths="[28,72]"}
+
+## Step 12: Populating the database (S)
+
+```bash
+.venv/bin/python scripts/load.py --year 2025
+```
+
+1. Create `build/kriminalita.sqlite` from `db/schema.sql`; fill the codelist
+   tables **from the ontology's SKOS files**, not from the CSV, so the database
+   and the glossary share one source. On an existing database, refresh the
+   metadata tables (ontology release, data dictionary).
+2. Read every download file that can hold records of the year (the files are
+   pagination by report date). **Polite caching:** downloads are kept in
+   `build/cache/zips/` with the publisher's stamp beside them. A file is
+   fetched again only if the publisher has a newer version *and* the cached
+   copy is older than `--max-age-days` (default 7), because the publisher
+   regenerates all files often and a daily run would otherwise re-download
+   everything. `--offline` uses the cache only. A run therefore normally costs
+   one small listing request; downloads are spaced one second apart, with
+   back-off on HTTP 429.
+3. Parse each file: map CSV fields to columns through `kdb:sourceField`, keep
+   rows whose report date falls in the year, set `state_as_of` to the file's
+   `updated` stamp.
+4. **Merge: latest observation wins.** New records are inserted; a record
+   already present is replaced (with its type links) only if the new
+   observation is as recent or more recent; an older observation is ignored.
+   The result does not depend on the order in which files are loaded.
+5. Data-quality report: duplicate identifiers, days of the year with no
+   records, records not present in the latest download of their month, the
+   SHACL warning rules evaluated in SQL, and a SHACL run on a random sample of
+   real records converted back to RDF.
+
+The SHACL check on real data uses a random sample: the uniqueness rule is a
+SPARQL constraint that compares every record with every other, so its cost
+grows quadratically (1,000 records take 24 s, 5,000 about ten minutes). At full
+scale, identity is enforced by the primary key and checked by CQ18 in SQL.
+
+The merge is tested in the validation loop (section 7) with two small
+observation files of the same month: record 5001 first *unsolved*, later
+*cleared and reclassified*. Loaded in either order, it ends as one row in the
+later state; loading a file twice changes nothing.
+
+Result for 2025:
+
+| Measure | Value |
+|---|---|
+| download files read (pagination) | 12 |
+| offence records (one per occurrence) | 1,377,905 |
+| type links | 4,007,126 |
+| duplicate record identifiers | 0 |
+| days of 2025 with no records (holes) | 0 |
+| records with report date outside 2025 | 0 |
+| stale records (missing from the latest download of their month) | 0 |
+| states as of | 2026-11-19 to 2026-11-21 |
+| rows rejected (unknown code) | 0 |
+| foreign-key violations | 0 |
+| records outside the Czech box / missing broader type | 0 / 0 |
+| records timestamped exactly 00:00 | 1,168 (open question for the domain expert) |
+| SHACL on 1,000 random real records (including the uniqueness rule) | conforms (24 s) |
+| database size | about 380 MB |
+
+: Load result, 2025 {tbl-colwidths="[60,40]"}
+
+## Step 13: Business glossary in Czech (S generates, H reviews the wording)
+
+```bash
+.venv/bin/python scripts/generate_glossary.py --pdf     # docs/glossary.pdf
+```
+
+The guide (part II) asks for a glossary that business readers can use without
+any modelling vocabulary. The principle adopted here: **English internals,
+Czech business translations.** The ontology, shapes and data dictionary stay in
+English; the business-facing text is Czech, because the source data and its
+authoritative terms (*přestupek*, *stav objasnění*, *třída*) are Czech.
+
+The Czech text lives **on the ontology terms**, not in the generator:
+
+| Glossary column | Source annotation |
+|---|---|
+| Pojem | `rdfs:label@cs` |
+| Význam | `krim:businessDefinition@cs`: a plain definition, a second definition for a second audience (not a translation of the formal English one) |
+| Příklad | `skos:example@cs` |
+| Nezaměňovat s | `skos:scopeNote@cs` |
+| Také nazýváno | `skos:altLabel@cs` |
+| V datovém slovníku | English label + table and column, from the data dictionary |
+
+: Where each glossary column comes from {tbl-colwidths="[25,75]"}
+
+The PDF (landscape, a table as requested, no Excel) contains a concept diagram
+**generated from the shapes** with Graphviz, the terms table, the business
+rules as Czech sentences (`sh:description@cs`, split into rules and
+recommendations by SHACL severity), worked examples verbalised from the sample
+data, and the codelists, including the full class tree with the publisher's
+labels. Where the publisher has a term, it wins: offence types are *třídy*
+("Číselník tříd"), so the Czech label became *třída deliktu*, with *typ
+deliktu* and *druh deliktu* as synonyms. The validation loop requires a Czech
+business definition on every class, every datatype property and every
+clearance-state and location-relevance code, a Czech sentence for every record
+rule, and an up-to-date `glossary.qmd` and diagram source.
+
+Pending, by design: *přestupek / trestný čin*, *kategorie* and *míra
+objasněnosti*, which depend on decisions in the competency questions (CQ03,
+CQ06, open question 5).
+
+# Who did what
+
+| Activity | H | L | S |
+|---|:-:|:-:|:-:|
+| Scope, choice of Python, pointers to R project and documentation | ● | | |
+| Source reconnaissance (API, codelists, docs) | | ● | |
+| Drafting competency questions and decisions | | ● | |
+| Answering key CQs by hand; reviewing decisions | ● | | |
+| Skeleton, definitions, shapes | | ● | |
+| Reviewing definitions and plain-language rules | ● | | |
+| Reference data, DDL, data dictionary, glossary, sample table | | | ● |
+| Czech business wording (definitions drafted by L, reviewed by H) | ● | ● | |
+| Validation, parity tests, data-quality report | | | ● |
+| Resolving open domain questions | ● | | |
+
+: Division of labour {tbl-colwidths="[64,12,12,12]"}
+
+# Next steps
+
+1. ~~Answer the five pending CQs~~ (done: all pass; see Step 1).
+2. **Resolve the six open questions** (H), then update definitions; the
+   `mp` editorial note goes once the publisher confirms.
+3. **Review the data dictionary** (H): send `db/data-dictionary.xlsx` out for
+   comments, feed the returned comments back into the ontology and shapes, and
+   regenerate. (The dictionary itself is done; see Step 11.)
+4. **Review the Czech glossary** (H): correct the wording of the business
+   definitions in the ontology, then add the pending derived terms once the CQ
+   decisions are made.
+5. **First release 1.0.0** (guide, part IV): fix the namespace, add
+   `owl:priorVersion` from then on, release ontology, shapes, DDL, dictionary and
+   glossary as one bundle.
+6. Optional: close the CQ17 gap (municipality) using RÚIAN reference data.
