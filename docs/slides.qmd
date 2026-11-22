@@ -15,131 +15,61 @@ format:
           \event{onto-db-poc · ontology release 0.3.0}
 ---
 
-## Agenda
-
-1) Intro: aim and worked example
-2) Concepts and how they relate
-3) Competency questions
-4) An LLM-friendly format
-5) The validation loop
-6) Technical vs business documentation
-7) The LLM: strong and weak points
-8) The human: strong and weak points
-9) Conclusion
-
 ## Intro: the method is the product
 
-- **Aim**: test a method for building an ontology with an LLM; the database is
-  the proof that the ontology can drive a real data model
-- **Worked example**: Police CR offence records, 2025
-  - 1.38 million records, one row per occurrence, latest state
-  - 39,927 anonymisation areas, 6,258 municipalities, 206 ORP areas, 77 okresy,
-    14 kraje
-- **Three iterations**, each a full pass: records → areas and municipalities →
-  higher administrative units (releases 0.1.0, 0.2.0, 0.3.0)
-- **Chief output**: the guide; the ontology, schema, data dictionary and Czech
-  glossary are its evidence
-
-## The sequence
-
-:::: {.columns}
-::: {.column width="50%"}
-1) Reconnaissance
-2) **Concepts and relations**
-3) **Competency questions**
-4) Reuse survey
-5) Skeleton and definitions
-6) Reference data
-:::
-::: {.column width="50%"}
-7) SHACL shapes
-8) Test suite
-9) **Validation loop**
-10) Schema, loader, dictionary, glossary
-11) Release, then iterate
-:::
-::::
-
-\vspace{1em}
-
-- **LLM drafts**, **expert decides**, **scripts repeat**: the split held for
-  three iterations
-- No GUI editor: text files under git plus the loop *are* the ontology
+- **Aim**: test a method for building an ontology with an LLM; the database
+  proves the ontology can drive a real data model
+- **Worked example**: Police CR offence records, 2025: 1.38 million records,
+  39,927 anonymisation areas, 6,258 municipalities, ORP areas, okresy, kraje
+- **Three iterations**, each a full pass of the method (releases 0.1.0 → 0.3.0)
+- **The split held**: the LLM drafts, the expert decides, scripts repeat
+- **Chief output**: the guide; ontology, schema, data dictionary and glossary
+  are its evidence
 
 ## Concepts and how they relate
 
-- **A handful of sentences**, each with both ends, judged true / false /
-  depends by the domain expert
-  - *An anonymisation area lies in exactly one municipality; a municipality has
-    one or more areas.*
-- **Why first**: the biggest corrections were structural (monthly files taken
-  for a concept; a shared area taken for a value on the record); competency
-  questions did not catch them
-- **Keep it short**: the LLM drafted 21 statements, the expert kept 7
-  (relationships only); 12 after iteration 3
-- **Traced**: each true sentence names the shape that enforces it
-
-## Concepts: check the structure first
-
-- **Expected**: municipality → ORP area → okres → kraj, a chain
-- **Found** in ČSÚ's relation tables: ORP Turnov spans three okresy
-- **Modelled**: two branches that meet at the kraj
-  - hard rule: both branches give the same kraj
-  - soft rule: an ORP area lies in one okres (a warning; Turnov expected)
-- **One exception in 206** is a warning, not a reason to drop the rule
+- **A handful of sentences**, both ends, judged by the expert:
+  *an area lies in exactly one municipality; a municipality has one or more
+  areas*
+- **Why first**: the biggest corrections were structural, and questions missed
+  them
+- **Short**: the LLM drafted 21 statements, the expert kept 7
+- **Check the structure**: the expected chain municipality → ORP area → okres →
+  kraj breaks at Turnov; two branches meet at the kraj
 
 \vspace{0.3em}
 ![](img/concepts.pdf){width=100%}
 
-## Questions as an executable spec
+## Competency questions
 
-- **Each question has a decision**: what is counted, excluded, listed
-- **Answered three ways**: by the expert, by SPARQL, by SQL; all must agree
+- **An executable spec**, answered three ways: by the expert, by SPARQL, by SQL;
+  all must agree
 - **Values hidden** on failure: the validator says *where*, not *what*
-- **Facts vs decisions**
-  - codebook facts (which okres a municipality lies in): fill from the source
-  - applying them (which units, which exclusions): the expert, by hand
+- **Facts vs decisions**: codebook facts may be filled from the source; how
+  they are applied is answered by hand
 - **One rule for empty groups**: every unit in scope gets a number
-  - `rows: 6258; others: 0` instead of 6,253 zero rows
-
-## Hand answers: disagreements pay
-
-| Iteration | Hand answers | Outcome |
-|---|---|---|
-| 1 | 5 questions | 10 disagreements: 3 slips, 5 imprecise questions, 2 validator faults |
-| 2 | 2 questions | both matched first time |
-| 3 | 4 questions | an unstated universe; names for codes; rounding |
-
-: {tbl-colwidths="[16,22,62]"}
-
-\vspace{0.5em}
-
-- **Neither side is the oracle**: each was wrong at least once
-- **Two query layers** caught a SPARQL engine returning zero burglaries, silently
+  (`rows: 6258; others: 0`)
+- **Disagreements pay**: 10 in iteration 1 (slips, imprecise questions,
+  validator faults), none in 2, three new kinds in 3; neither side is the oracle
 
 ## An LLM-friendly format
 
 - **Turtle** for the OWL module and the SHACL shapes: compact, diff-friendly
-- **Markdown** for the specification (concept sentences, competency
-  questions), with fenced blocks the validator reads
-- **CSV** for hand-kept translations and for answering by hand
-- **Two definitions per term**: formal English genus–differentia, plain Czech
-  for business readers; every rule also one plain sentence
-- **Lean OWL, strict SHACL**: meaning in OWL, data rules in shapes; no
-  `rdfs:domain`/`range`
+- **Markdown** for the spec (concept sentences, competency questions), with
+  fenced blocks the validator reads; **CSV** for answering by hand
+- **Two definitions per term**: formal English, plain Czech for business;
+  every rule also one plain sentence
+- **Lean OWL, strict SHACL**: meaning in OWL, data rules in shapes
 - **CLAUDE.md**: conventions, namespaces, what is generated from what
 
 ## The validation loop
 
-- **Run after every change**: parse, HermiT, concepts vs shapes, lint, SHACL,
+- **After every change**: parse, reasoner, concepts vs shapes, lint, SHACL,
   drift of generated files, competency questions, loader
-- **Every check has a negative test**: a check that never failed proves nothing
-- **Every generated file has a drift check**: schema, dictionary, glossary,
-  sample tables, CQ index
-- **Don't bend the checker to fit an answer**: fix the answer, or the hint
-- **Performance is part of correctness**
-  - a missing index: a quality check ran over ten minutes
-  - a per-node SPARQL rule: +90 s per run; a SPARQL target: back to 6 s
+- **Every check has a negative test**; every generated file a drift check
+- **Fix the answer, not the checker**
+- **Performance is part of correctness**: a missing index (ten minutes), a
+  per-node SPARQL rule (+90 s per run, 6 s with a SPARQL target)
 
 ## Technical vs business documentation
 
@@ -147,46 +77,47 @@ format:
 ::: {.column width="50%"}
 **Data dictionary** (English)
 
-- one row per column: 19 fields, ISO/IEC 11179
-- Excel for review, PDF and CSV for reference
+- a row per column, ISO/IEC 11179
+- Excel for review
 - deprecated terms in an appendix
-- points to ČSÚ codebooks, does not copy them
+- points to ČSÚ codebooks
 :::
 ::: {.column width="50%"}
 **Business glossary** (Czech)
 
-- current terms only: meaning, example, "nezaměňovat s"
-- record rules as sentences, worked examples
-- concept diagram from the shapes
+- current terms only
+- meaning, example, "nezaměňovat s"
+- rules as sentences, concept diagram
 - PDF: read, not edited
 :::
 ::::
 
 \vspace{0.5em}
 
-- **One source**: both are generated from the ontology and the shapes
-- **English internals, Czech business translations**; publisher's own terms
-  (*třída*, *okres*, *kraj*)
+- **One source**: both generated from the ontology and the shapes
+- **English internals, Czech business translations**
 
-## The LLM: strong points
+## The LLM: strong and weak points
 
-- **Drafts fast and completely**: questions, terms, definitions, shapes, queries
-- **Keeps many files consistent**: ontology, shapes, tests, docs, in one change
-- **Writes the machinery**: validator, loader, generators (about 2,900 lines)
-- **Reads sources when asked to**: vocabulary files, codebooks, the API's own
-  documentation
-- **Checks before claiming**: every data claim queried before it entered the
-  model
+:::: {.columns}
+::: {.column width="50%"}
+**Strong**
 
-## The LLM: weak points
+- drafts fast and completely
+- keeps many files consistent
+- writes the machinery: validator, loader, generators
+- reads sources when asked; checks before claiming
+:::
+::: {.column width="50%"}
+**Weak**
 
-- **Meaning from names**: "incident time" was the time of report
-- **Packaging as domain**: monthly download files modelled as a concept
-- **Reuse by name**: `hasCentroid`; *kraj* of 1960; *ORP* as the town
-- **Lists that grow**: 21 concept statements where 7 were needed
-- **Correct but slow**: no index; per-node SPARQL rules
-- **Hand-written lists in code**: a new codelist silently left out
-- **Pre-filling what should be decided**; leaking computed answers
+- meaning from names; packaging as domain
+- reuse by name (*kraj* of 1960, `hasCentroid`)
+- lists that grow (21 statements for 7)
+- correct but slow code
+- pre-fills what should be decided
+:::
+::::
 
 ## The human: strong and weak points
 
@@ -194,34 +125,27 @@ format:
 ::: {.column width="50%"}
 **Strong**
 
-- domain facts no file holds: areas as polygons, military areas as
-  municipalities
+- domain facts no file holds
 - deciding: verdicts, exclusions, empty groups
-- keeping it short and in domain language
+- keeping it short, in domain language
 - spotting packaging taken for meaning
 :::
 ::: {.column width="50%"}
 **Weak**
 
-- arithmetic slips in hand answers
-- format rules: separators, codes not names, three decimals
+- arithmetic slips
+- format rules: codes not names, three decimals
 - a universe taken from the wrong list
-- memory, until checked: right every time, but only checks made it evidence
+- memory: right, but only checks make it evidence
 :::
 ::::
 
 ## Conclusion
 
-- **The method holds**, as a loop: three iterations, every step had an obvious
+- **The method holds, as a loop**: three iterations, each step had an obvious
   place for its part of the change
-- **What makes it work**
-  - concept sentences before questions
-  - hand answers where a decision is involved, two query layers
-  - reuse by definition, read from the source
-  - a mechanical loop with negative tests and drift checks
-- **What a real use case adds**: per-capita crime by ORP area needs a definition
+- **What makes it work**: concept sentences first; hand answers where a
+  decision is involved; two query layers; reuse by definition; a mechanical
+  loop with negative tests
+- **What a real use case adds**: crime per capita by ORP area needs a definition
   of *crime* (89% of records are misdemeanours) and population: iteration 4
-
-## {.plain}
-
-\jlaclosing{Questions?}{The guide: docs/guide.pdf\\ in the onto-db-poc repository}
