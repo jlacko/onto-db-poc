@@ -20,17 +20,24 @@
     dcterms:description """Concepts for offence records published by the Police of the
 Czech Republic at kriminalita.policie.gov.cz: the records themselves, their offence
 types, clearance states and location relevance, the anonymisation areas their
-published places stand for, and the municipalities those areas lie in, as one
-continuous history keyed by
+published places stand for, the municipalities those areas lie in, and the ORP
+areas, okresy and kraje above them, as one continuous history keyed by
 the record identifier (the publisher's monthly download files are pagination, not part
 of the model). Location data exist from about mid-2013. Built ontology-first as a proof of concept; the SQLite schema is
 generated from the SHACL shapes that accompany this module."""@en ;
-    owl:versionIRI <https://example.org/kriminalita/ontology/0.2.0> ;
-    owl:versionInfo "0.2.0" ;
-    owl:priorVersion <https://example.org/kriminalita/ontology/0.1.0> ;
+    owl:versionIRI <https://example.org/kriminalita/ontology/0.3.0> ;
+    owl:versionInfo "0.3.0" ;
+    owl:priorVersion <https://example.org/kriminalita/ontology/0.2.0> ;
     dcterms:modified "2026-11-22T00:00:00"^^xsd:dateTime ;
     dcterms:source <https://kriminalita.policie.gov.cz/> ;
-    rdfs:comment """Release 0.2.0: anonymisation areas and municipalities. A published location
+    rdfs:comment """Release 0.3.0: higher administrative units. A municipality lies in one ORP
+area (krim:OrpArea, ČSÚ codelist 65) and one okres (krim:Okres, codelist 101);
+each lies in one kraj (krim:Kraj, codelist 100, matched to NUTS 3). The two
+branches meet at the kraj and must agree; an ORP area normally lies in one okres
+(a warning: Turnov spans three). New terms only, nothing deprecated: a minor
+version.
+
+Release 0.2.0: anonymisation areas and municipalities. A published location
 is the centre of one of the publisher's predefined anonymisation areas, so a record
 now lies in an area (krim:inAnonymisationArea), and an area in a municipality
 (krim:inMunicipality, ČSÚ codelist 43). krim:anonymisedLatitude and

@@ -1,6 +1,6 @@
 ---
 title: "Slovník pojmů"
-subtitle: "Kriminalita: obchodní pojmy, ontologie verze 0.2.0 (2026-11-22)"
+subtitle: "Kriminalita: obchodní pojmy, ontologie verze 0.3.0 (2026-11-22)"
 lang: cs
 format:
   pdf:
@@ -29,7 +29,7 @@ generuje. Technický popis tabulek a sloupců je v anglickém **datovém slovní
 (`docs/data-dictionary.pdf`); sloupec *V datovém slovníku* ukazuje, kde se pojem v datech
 nachází.
 
-Stav: **pracovní verze** (ontologie 0.2.0). Definice čekají na revizi; pojmy
+Stav: **pracovní verze** (ontologie 0.3.0). Definice čekají na revizi; pojmy
 *přestupek*, *trestný čin*, *kategorie* a *míra objasněnosti* budou doplněny po
 rozhodnutí v kompetenčních otázkách.
 

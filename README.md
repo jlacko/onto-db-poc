@@ -36,7 +36,7 @@ The example was built in three iterations, each a full pass through the method:
 |---|---|
 | `v0.1.0` | offence records, types, clearance states, location relevance |
 | `v0.2.0` | anonymisation areas (39,927 predefined polygons) and municipalities (ČSÚ codelist 43); the record's coordinates deprecated |
-| on branch `iteration-3` | ORP areas, okresy and kraje (ČSÚ codelists 65, 101, 100); all steps done, all 29 competency questions pass, not yet released |
+| `v0.3.0` (current, on `main`) | ORP areas, okresy and kraje (ČSÚ codelists 65, 101, 100), two branches meeting at the kraj; all 29 competency questions pass |
 
 Terms are deprecated, not renamed or removed. How each step went, and what it
 taught, is written up in two companion documents:

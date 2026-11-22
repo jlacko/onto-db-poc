@@ -1,6 +1,6 @@
 ---
 title: "Data dictionary"
-subtitle: "Kriminalita database, ontology release 0.2.0 (2026-11-22)"
+subtitle: "Kriminalita database, ontology release 0.3.0 (2026-11-22)"
 format:
   pdf:
     documentclass: scrartcl

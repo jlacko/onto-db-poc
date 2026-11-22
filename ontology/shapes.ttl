@@ -17,7 +17,7 @@
 <https://example.org/kriminalita/shapes>
     a owl:Ontology ;
     owl:imports <https://example.org/kriminalita/ontology> ;
-    owl:versionInfo "0.2.0" .
+    owl:versionInfo "0.3.0" .
 
 # ---------------------------------------------------------------------
 # Mapping vocabulary
