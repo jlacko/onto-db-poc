@@ -146,7 +146,7 @@ shape:   krim:AnonymisationAreaShape
 
 Verdict: true
 
-ORP is the administrative district of a municipality with extended powers
+ORP is the administrative area of a municipality with extended powers
 (*správní obvod obce s rozšířenou působností*, ČSÚ codelist 65). Checked: every
 one of the 6,258 municipalities is in exactly one of the 206 ORPs.
 
@@ -160,13 +160,14 @@ shape:   none
 reason:  not modelled yet (iteration 3); names are provisional
 ```
 
-### S9: A municipality lies in exactly one district; a district has one or more municipalities.
+### S9: A municipality lies in exactly one okres; an okres has one or more municipalities.
 
 Verdict: true
 
-District means *okres* (LAU 1, ČSÚ codelist 101). Checked: every municipality
-is in exactly one of the 77 districts. ČSÚ maintains this link by hand; the
-links to ORP and region are derived from it.
+Okres: LAU 1, ČSÚ codelist 101 (the Czech terms okres and kraj are used as
+they are; "district" and "region" are ambiguous in English). Checked: every
+municipality is in exactly one of the 77 okresy. ČSÚ maintains this link by
+hand; the links to ORP and kraj are derived from it.
 
 ```validator
 subject: krim:Municipality
@@ -178,12 +179,12 @@ shape:   none
 reason:  not modelled yet (iteration 3); names are provisional
 ```
 
-### S10: An ORP lies in exactly one region; a region has one or more ORPs.
+### S10: An ORP lies in exactly one kraj; a kraj has one or more ORPs.
 
 Verdict: true
 
-Region means *kraj* (NUTS 3, ČSÚ codelist 100). Checked: all 206 ORPs nest in
-one of the 14 regions.
+Kraj: NUTS 3, ČSÚ codelist 100. Checked: all 206 ORPs nest in one of the 14
+kraje.
 
 ```validator
 subject: krim:Orp
@@ -195,13 +196,13 @@ shape:   none
 reason:  not modelled yet (iteration 3); names are provisional
 ```
 
-### S11: A district lies in exactly one region; a region has one or more districts.
+### S11: An okres lies in exactly one kraj; a kraj has one or more okresy.
 
 Verdict: true
 
-Checked: all 77 districts nest in one region. ORP and district are two branches
-that meet at the region: a municipality's region is the same whichever branch
-is followed. Prague is one item in each codelist (ORP, district and region).
+Checked: all 77 okresy nest in one kraj. ORP and okres are two branches that
+meet at the kraj: a municipality's kraj is the same whichever branch is
+followed. Prague is one item in each codelist (ORP, okres and kraj).
 
 ```validator
 subject: krim:District
@@ -213,11 +214,11 @@ shape:   none
 reason:  not modelled yet (iteration 3); names are provisional
 ```
 
-### S12: An ORP lies within one district; a district has one or more ORPs.
+### S12: An ORP lies within one okres; an okres has one or more ORPs.
 
 Verdict: depends
 
-True for 205 of the 206 ORPs. ORP Turnov (5109) is split across three districts
+True for 205 of the 206 ORPs. ORP Turnov (5109) is split across three okresy
 (Semily, Liberec, Jablonec nad Nisou). A soft rule: a warning that names Turnov
 as the known exception, not a constraint.
 
@@ -228,5 +229,5 @@ object:  krim:District
 count:   0..1
 inverse: 1..*
 shape:   none
-reason:  holds except for ORP Turnov, split across three districts; a warning, not a constraint
+reason:  holds except for ORP Turnov, split across three okresy; a warning, not a constraint
 ```

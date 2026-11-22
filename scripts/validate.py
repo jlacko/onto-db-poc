@@ -513,11 +513,57 @@ def parse_cq_spec() -> dict[str, dict]:
             continue
         lines = [l.strip() for l in block.group(1).strip().splitlines() if l.strip()]
         pending = any("TODO" in l for l in lines)
+        # Optional first line "rows: N; others: V": the result has exactly N rows, and every
+        # row not written out has the value V in each non-key column (e.g. every municipality
+        # is listed, the hand answer writes only the non-zero ones).
+        fill = None
+        d = re.fullmatch(r"rows:\s*(\d+)\s*;\s*others:\s*(.+)", lines[0]) if lines else None
+        if d:
+            fill = (int(d.group(1)), d.group(2).strip())
+            lines = lines[1:]
         header = [h.strip() for h in lines[0].split("|")]
         # Cells are separated by "|" (the format rule); a row without it stays one cell and fails.
         rows = [] if pending else [[c.strip() for c in l.split("|")] for l in lines[1:]]
-        spec[cq] = {"expected": rows, "header": header, "pending": pending, "hand": hand}
+        spec[cq] = {"expected": rows, "header": header, "pending": pending, "hand": hand, "fill": fill}
     return spec
+
+
+def complete(want: list[tuple], got: list[tuple], fill) -> tuple[list[tuple], list[str]]:
+    """Expand an answer written with "rows: N; others: V" to the full expected set.
+
+    Returns the expected rows (yours, plus every other result row with V in each
+    non-key column) and the problems that need no values to describe: a wrong row
+    count, and how many result rows outside your answer have a value other than V.
+    """
+    if fill is None:
+        return want, []
+    total, other = fill
+    other = norm(other)
+    keys = {r[0] for r in want}
+    rest = [r for r in got if r[0] not in keys]
+    problems = []
+    if len(got) != total:
+        problems.append(f"the result has {len(got)} rows, the answer says rows: {total}")
+    off = [r for r in rest if any(c != other for c in r[1:])]
+    if off:
+        problems.append(f"{len(off)} row(s) not written out in your answer have a value other than {other}")
+    return sorted(want + [(r[0], *[other] * (len(r) - 1)) for r in rest]), problems
+
+
+def selftest_complete() -> list[str]:
+    """Negative tests for the "rows/others" format: each case must fail, the last pass."""
+    got = [("a", "3"), ("b", "0"), ("c", "2"), ("d", "0")]
+    cases = [("a non-zero row left out", [("a", "3")], (4, "0"), False),
+             ("a wrong row count", [("a", "3"), ("c", "2")], (5, "0"), False),
+             ("a wrong written value", [("a", "3"), ("c", "1")], (4, "0"), False),
+             ("a complete answer", [("a", "3"), ("c", "2")], (4, "0"), True)]
+    errors = []
+    for name, want, fill, ok in cases:
+        exp, problems = complete(sorted(want), got, fill)
+        passed = exp == got and not problems
+        if passed != ok:
+            errors.append(f"{name}: {'passed' if passed else 'failed'}, expected to {'pass' if ok else 'fail'}")
+    return errors
 
 
 def norm(v) -> str:
@@ -623,6 +669,10 @@ def check_cq(rep: Report):
     g = load_graph(*model_files(), TESTS / "sample-data.ttl")
     con = build_sample_db()
     cq_dir = TESTS / "cq"
+    errors = selftest_complete()
+    rep.add("FAIL" if errors else "PASS", "expected-block format 'rows: N; others: V': "
+            + ("; ".join(errors) if errors else "a left-out non-zero row, a wrong row count and a wrong value "
+               "each fail; a complete answer passes"))
     for cq in sorted(spec):
         exp = spec[cq]
         rq, sq = cq_dir / f"{cq}.rq", cq_dir / f"{cq}.sql"
@@ -654,12 +704,16 @@ def check_cq(rep: Report):
             rep.add("PENDING", f"{cq}: waiting for your answer in competency-questions.md "
                                f"({layers} agree on {len(got)} row(s))")
             continue
-        want = as_set(exp["expected"])
-        if got == want:
+        want, problems = complete(as_set(exp["expected"]), got, exp.get("fill"))
+        if got == want and not problems:
             rep.add("PASS", f"{cq}: {layers} match the expected answer ({len(got)} row(s))")
         else:
             if exp.get("hand") and not SHOW_ANSWERS:
-                rep.add("FAIL", f"{cq}: your answer differs from {layers}\n" + hand_hint(exp["header"], want, got))
+                mine = as_set(exp["expected"])
+                keys = {r[0] for r in mine}
+                hint = hand_hint(exp["header"], mine, [r for r in got if r[0] in keys] if exp.get("fill") else got)
+                rep.add("FAIL", f"{cq}: your answer differs from {layers}\n"
+                        + "".join(f"      {x}\n" for x in problems) + hint)
             else:
                 rep.add("FAIL", f"{cq}: {layers} differ from the expected answer\n"
                                 f"      expected {want}\n      got      {got}")
