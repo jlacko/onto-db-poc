@@ -713,13 +713,11 @@ def main():
     rep = Report()
     check_parse(rep)
     if not rep.failed:
-        check_reasoner(rep)
-        check_concepts(rep)
-        check_lint(rep)
-        check_shacl(rep)
-        check_ddl(rep)
-        check_cq(rep)
-        check_loader(rep)
+        for check in (check_reasoner, check_concepts, check_lint, check_shacl, check_ddl, check_cq, check_loader):
+            try:
+                check(rep)
+            except Exception as e:  # noqa: BLE001 - a crashed section is a failure, the others still run
+                rep.add("FAIL", f"section crashed: {type(e).__name__}: {e}")
     BUILD.mkdir(exist_ok=True)
     (BUILD / "validation-report.md").write_text(rep.markdown(), encoding="utf-8")
     print(f"\n{'FAILED' if rep.failed else 'PASSED'}. Report: build/validation-report.md")

@@ -117,8 +117,7 @@ path:    krim:inAnonymisationArea
 object:  krim:AnonymisationArea
 count:   1..1
 inverse: 0..*
-shape:   none
-reason:  not modelled yet
+shape:   krim:OffenceRecordShape
 ```
 
 ### S7: An anonymisation area lies in exactly one municipality; a municipality has one or more areas.
@@ -140,6 +139,5 @@ path:    krim:inMunicipality
 object:  krim:Municipality
 count:   1..1
 inverse: 1..*
-shape:   none
-reason:  not modelled yet
+shape:   krim:AnonymisationAreaShape
 ```

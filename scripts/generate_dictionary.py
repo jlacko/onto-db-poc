@@ -78,7 +78,7 @@ def to_xlsx(rows, codes, ctx, path):
     ws = wb.create_sheet("Codelists")
     sheet(ws, ["Codelist", "Code", "Label (cs)", "Label (en)", "Broader code", "Definition", "Comments"],
           [[name, i["code"], i["label_cs"], i["label_en"], i["broader"], i["definition_en"], ""]
-           for name, items in codes.items() for i in items],
+           for name, items in codes.items() if name != "municipality" for i in items],
           [20, 8, 40, 45, 10, 60, 40])
 
     ws = wb.create_sheet("Deprecated")
@@ -205,6 +205,11 @@ def to_qmd(rows, codes, ctx) -> str:
           "`ontology/reference/codelist-texts.csv`.", ""]
     for name, items in codes.items():
         o += [f"## `{name}`", ""]
+        if name == "municipality":  # 6,258 items: point to the standard codelist instead
+            o += [f"{len(items)} municipalities and military training areas: the standard codelist of the",
+                  "Czech Statistical Office, ČSÚ codelist 43 (<https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=43>);",
+                  "RÚIAN uses the same codes. Not listed here.", ""]
+            continue
         if any(i["broader"] for i in items):
             o += ["| Code | Label (cs) | Label (en) | Broader |", "|---|---|---|---|"]
             o += [f"| {i['code']} | {esc(i['label_cs'])} | {esc(i['label_en'])} | {i['broader']} |" for i in items]

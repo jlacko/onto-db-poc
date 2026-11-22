@@ -43,17 +43,17 @@ rozhodnutí v kompetenčních otázkách.
 
 | Pojem | Význam | Příklad | Nezaměňovat s | Také nazýváno | V datovém slovníku |
 |---|---|---|---|---|---|
-| **anonymizační oblast** | Oblast, do jejíhož středu vydavatel posune místo každého skutku, který v ní leží, aby nebylo možné určit skutečné místo. Obce jsou na takové oblasti rozděleny podle počtu skutků; malé obce tvoří jedinou oblast. | Oblast 29789 v Praze se středem 50,0833° s. š., 14,6278° v. d. | Správní jednotka nebo skutečné místo skutku. Oblasti vydavatel vypočítal jednou z dat za rok 2018 a zveřejnil je jako pevný seznam; oblast existuje, i když v ní žádný skutek neleží. | Voroného polygon | *anonymisation area* |
+| **anonymizační oblast** | Oblast, do jejíhož středu vydavatel posune místo každého skutku, který v ní leží, aby nebylo možné určit skutečné místo. Obce jsou na takové oblasti rozděleny podle počtu skutků; malé obce tvoří jedinou oblast. | Oblast 29789 v Praze se středem 50,0833° s. š., 14,6278° v. d. | Správní jednotka nebo skutečné místo skutku. Oblasti vydavatel vypočítal jednou z dat za rok 2018 a zveřejnil je jako pevný seznam; oblast existuje, i když v ní žádný skutek neleží. | Voroného polygon | *anonymisation area*; \texttt{anonymisation\_\allowbreak{}area} |
 | **datum a čas oznámení** | Datum a čas, kdy byl skutek oznámen a zapsán do evidence Policie ČR, s přesností na minuty. | 19. 2. 2025 ve 20:34. | Okamžik spáchání skutku. Skutek oznámený pozdě večer a zapsaný až další den se počítá ke dni zápisu. Čas 00:00 může znamenat neznámý čas. | datum ohlášení | *report date and time*; \texttt{offence\_\allowbreak{}record.\allowbreak{}report\_\allowbreak{}datetime} |
 | **evidováno městskou policií** | Příznak, zda záznam pochází od obecní či městské policie, a nikoli od Policie ČR. | Ano u přestupku, který řešila městská policie. | Význam je odvozen z dokumentace API vydavatele (statistiky „sp“ a „mp“); u tohoto pole jej vydavatel výslovně nepopisuje, proto je třeba jej ověřit. |  | *recorded by municipal police*; \texttt{offence\_\allowbreak{}record.\allowbreak{}municipal\_\allowbreak{}police} |
-| **obec** | Obec podle číselníku obcí a vojenských újezdů Českého statistického úřadu (číselník 43), určená šestimístným kódem. | Pustá Polom (kód 509736), rozdělená na čtyři anonymizační oblasti. | Městská část nebo část obce. Patří sem i čtyři vojenské újezdy (Boletice, Březina, Hradiště, Libavá); podle zákona o obcích obcemi nejsou, zde se s nimi ale zachází jako s obcemi. |  | *municipality* |
+| **obec** | Obec podle číselníku obcí a vojenských újezdů Českého statistického úřadu (číselník 43), určená šestimístným kódem. | Pustá Polom (kód 509736), rozdělená na čtyři anonymizační oblasti. | Městská část nebo část obce. Patří sem i čtyři vojenské újezdy (Boletice, Březina, Hradiště, Libavá); podle zákona o obcích obcemi nejsou, zde se s nimi ale zachází jako s obcemi. |  | *municipality*; \texttt{municipality} |
 | **relevance lokality** | Údaj o tom, co zveřejněné místo u záznamu znamená: místo spáchání, místo oznámení, místo následku a podobně. | Místo spáchání (kód 4). | Přesnost polohy. Všechny zveřejněné polohy jsou anonymizované bez ohledu na relevanci. |  | *location relevance*; \texttt{location\_\allowbreak{}relevance} |
 | **stav ke dni** | Okamžik, ke kterému vydavatel uvedl současný stav záznamu (stav objasnění, třídy a polohu). | 19. 11. 2026 v 0:27: záznam byl naposledy obsažen v datech, která vydavatel vygeneroval v tu chvíli. | Datum oznámení. Uchovává se jen poslední známý stav, proto i míra objasněnosti platí jen k tomuto dni; nedávné skutky bývají ještě v šetření. |  | *state as of*; \texttt{offence\_\allowbreak{}record.\allowbreak{}state\_\allowbreak{}as\_\allowbreak{}of} |
 | **stav objasnění** | Výsledek policejního šetření skutku, například zda byl zjištěn pravděpodobný pachatel. | Zjištěn pravděpodobný pachatel (kód 1). | Výsledek trestního stíhání nebo rozhodnutí soudu. Stav se v čase mění a platí vždy jen ke dni uvedenému jako stav ke dni. |  | *clearance state*; \texttt{clearance\_\allowbreak{}state} |
 | **třída deliktu** | Třída kriminalisticko-statistické evidence Policie ČR, podle které se záznamy třídí podle druhu skutku. Třídy tvoří hierarchii: kategorie (např. Krádeže vloupáním) a jejich podtřídy (např. Byt). | Krádeže vloupáním – byt (kód 19), podtřída kategorie Krádeže vloupáním (kód 18). | Právní kvalifikace podle trestního zákoníku. Jde o statistickou klasifikaci policie, která zahrnuje i přestupky, požáry a dopravní nehody. Záznam nese svou třídu spolu se všemi nadřazenými třídami. | druh deliktu, typ deliktu | *offence type* |
 | **záznam o deliktu** | Záznam Policie ČR o jednom skutku, který byl policii oznámen nebo který policie sama zjistila a který je podezřelý z trestného činu nebo přestupku. | Záznam 25719550: úmyslné ublížení na zdraví oznámené 19. 2. 2025 ve 20:34, neobjasněno. | Skutek samotný. Záznam existuje i tehdy, když policie později zjistí, že se skutek nestal nebo není trestným činem. Pozdější rozhodnutí státního zástupce nebo soudu se v záznamu neprojeví. | delikt | *offence record*; \texttt{offence\_\allowbreak{}record} |
-| **zeměpisná délka středu** | Zeměpisná délka (WGS-84) středu anonymizační oblasti; právě tento bod se zveřejňuje jako místo všech skutků v oblasti. | 14,6278 (oblast 29789 v Praze). | Těžiště polygonu; viz zeměpisná šířka středu. |  | *centre longitude* |
-| **zeměpisná šířka středu** | Zeměpisná šířka (WGS-84) středu anonymizační oblasti; právě tento bod se zveřejňuje jako místo všech skutků v oblasti. | 50,0833 (oblast 29789 v Praze). | Těžiště polygonu. Střed je středem shluku skutků, v případě potřeby posunutým dovnitř obce. |  | *centre latitude* |
+| **zeměpisná délka středu** | Zeměpisná délka (WGS-84) středu anonymizační oblasti; právě tento bod se zveřejňuje jako místo všech skutků v oblasti. | 14,6278 (oblast 29789 v Praze). | Těžiště polygonu; viz zeměpisná šířka středu. |  | *centre longitude*; \texttt{anonymisation\_\allowbreak{}area.\allowbreak{}centre\_\allowbreak{}longitude} |
+| **zeměpisná šířka středu** | Zeměpisná šířka (WGS-84) středu anonymizační oblasti; právě tento bod se zveřejňuje jako místo všech skutků v oblasti. | 50,0833 (oblast 29789 v Praze). | Těžiště polygonu. Střed je středem shluku skutků, v případě potřeby posunutým dovnitř obce. |  | *centre latitude*; \texttt{anonymisation\_\allowbreak{}area.\allowbreak{}centre\_\allowbreak{}latitude} |
 
 : Pojmy {tbl-colwidths="[13,24,13,24,8,18]"}
 
@@ -66,19 +66,16 @@ Pravidla, která musí platit pro každý záznam (jejich porušení je chyba):
 1. Identifikátor záznamu musí označovat právě jeden záznam o deliktu (žádné duplicity).
 2. Každý záznam o deliktu má právě jeden celočíselný identifikátor přidělený vydavatelem.
 3. Každý záznam o deliktu má právě jedno datum a čas oznámení.
-4. Každý záznam o deliktu má právě jednu anonymizovanou zeměpisnou šířku v rozsahu -90 až 90 stupňů.
-5. Každý záznam o deliktu má právě jednu anonymizovanou zeměpisnou délku v rozsahu -180 až 180 stupňů.
-6. U každého záznamu o deliktu je uvedeno, zda jej evidovala městská policie.
-7. Každý záznam o deliktu má právě jeden stav objasnění.
-8. Každý záznam o deliktu má právě jednu relevanci lokality.
-9. U každého záznamu o deliktu je uveden právě jeden okamžik, ke kterému platí jeho stav.
-10. Každý záznam o deliktu má alespoň jednu třídu deliktu.
+4. Každý záznam o deliktu leží právě v jedné anonymizační oblasti, té, jejíž střed je jeho zveřejněným bodem.
+5. U každého záznamu o deliktu je uvedeno, zda jej evidovala městská policie.
+6. Každý záznam o deliktu má právě jeden stav objasnění.
+7. Každý záznam o deliktu má právě jednu relevanci lokality.
+8. U každého záznamu o deliktu je uveden právě jeden okamžik, ke kterému platí jeho stav.
+9. Každý záznam o deliktu má alespoň jednu třídu deliktu.
 
 Doporučení (jejich porušení je jen varování, protože jde o zvyklosti zdroje, nikoli o pravidla věci):
 
-1. Anonymizovaná zeměpisná šířka záznamu by měla ležet mezi 48,5° a 51,1° severní šířky.
-2. Anonymizovaná zeměpisná délka záznamu by měla ležet mezi 12,0° a 18,9° východní délky.
-3. Záznam označený třídou deliktu by měl nést i její nadřazenou třídu.
+1. Záznam označený třídou deliktu by měl nést i její nadřazenou třídu.
 
 # Příklady
 

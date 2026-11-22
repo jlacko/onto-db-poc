@@ -61,15 +61,189 @@ column has a domain-specific meaning.
 
 | Table | Realises | Columns |
 |---|---|---|
+| `municipality` | municipality | 4 |
+| `anonymisation_area` | anonymisation area | 5 |
 | `clearance_state` | clearance state | 6 |
 | `location_relevance` | location relevance | 6 |
-| `offence_record` | offence record | 9 |
+| `offence_record` | offence record | 8 |
 | `offence_record_type` | has offence type | 2 |
 | `offence_type` | offence type | 7 |
 | `source_file` | technical table (not part of the ontology) | 4 |
 | `load_run` | technical table (not part of the ontology) | 7 |
 
 : Tables {tbl-colwidths="[30,55,15]"}
+
+\newpage
+
+# Table `municipality`
+
+**Realises:** municipality (`krim:Municipality`)
+
+A municipality is a territorial unit of the Czech Republic listed in the Czech Statistical Office's codelist of municipalities and military training areas (ČSÚ codelist 43) and identified by its six-digit code.
+
+*Not to be confused with / scope:* Not a city district or a part of a municipality. Includes the four military training areas (Boletice, Březina, Hradiště, Libavá): they are not municipalities in law (Act 128/2000) and hold no elections, but they are treated as municipalities here. RÚIAN uses the same codes.
+
+| Column | Data element | SQL type | Null | Key |
+|---|---|---|---|---|
+| `iri` | municipality IRI | TEXT | no | UNIQUE |
+| `code` | municipality code | INTEGER | no | PK |
+| `name_cs` | municipality name (Czech) | TEXT | no |  |
+| `definition_en` | definition | TEXT | yes |  |
+
+: Columns of municipality {tbl-colwidths="[28,32,12,8,20]"}
+
+## `municipality.iri`: municipality IRI
+
+| | |
+|---|---|
+| **Czech name** | IRI |
+| **Definition** | The IRI that identifies the municipality in the ontology namespace; the join key between the database row and the ontology. |
+| **Property** | (focus node) |
+| **Value domain** | IRI |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every row has exactly one IRI. |
+| **Status** | generated |
+
+: {tbl-colwidths="[22,78]"}
+
+## `municipality.code`: municipality code
+
+| | |
+|---|---|
+| **Czech name** | kód obce |
+| **Definition** | The six-digit code of a municipality in ČSÚ codelist 43 (the same code is used in RÚIAN). |
+| **Property** | skos:notation `skos:notation` |
+| **Value domain** | xsd:integer |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every municipality has exactly one integer code from ČSÚ codelist 43. |
+| **Status** | reused (skos) |
+
+: {tbl-colwidths="[22,78]"}
+
+## `municipality.name_cs`: municipality name (Czech)
+
+| | |
+|---|---|
+| **Czech name** | název obce (česky) |
+| **Definition** | The official Czech name of a municipality as listed in ČSÚ codelist 43. |
+| **Property** | skos:prefLabel `skos:prefLabel` |
+| **Value domain** | rdf:langString; text in language 'cs' |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every municipality has exactly one Czech name; names are not unique. |
+| **Status** | reused (skos) |
+
+: {tbl-colwidths="[22,78]"}
+
+## `municipality.definition_en`: definition
+
+| | |
+|---|---|
+| **Czech name** | definice |
+| **Definition** | An English note on a municipality; present only where it needs one (the military training areas). |
+| **Property** | skos:definition `skos:definition` |
+| **Value domain** | rdf:langString |
+| **Cardinality** | 0..1 |
+| **Business rule** | A municipality has at most one English definition. |
+| **Status** | reused (skos) |
+
+: {tbl-colwidths="[22,78]"}
+
+\newpage
+
+# Table `anonymisation_area`
+
+**Realises:** anonymisation area (`krim:AnonymisationArea`)
+
+An anonymisation area is a geographic feature, one of a fixed set of polygons defined by the publisher, to whose centre the location of every offence record falling inside it is moved before publication.
+
+*Not to be confused with / scope:* Not an administrative unit, and not the true place of an act. The publisher computed the areas once: municipalities were split into Voronoi polygons around K-means cluster centres of the 2018 data, and municipalities with fewer than 25 offences in 2018 were left whole. The list is published as a fixed file (2022). An area exists whether or not any record falls in it.
+
+| Column | Data element | SQL type | Null | Key |
+|---|---|---|---|---|
+| `iri` | anonymisation area IRI | TEXT | no | UNIQUE |
+| `id` | area id | INTEGER | no | PK |
+| `centre_latitude` | centre latitude | REAL | no |  |
+| `centre_longitude` | centre longitude | REAL | no |  |
+| `municipality_code` | municipality | INTEGER | no | FK -> municipality(code) |
+
+: Columns of anonymisation_area {tbl-colwidths="[28,32,12,8,20]"}
+
+## `anonymisation_area.iri`: anonymisation area IRI
+
+| | |
+|---|---|
+| **Czech name** | IRI |
+| **Definition** | The IRI that identifies the anonymisation area in the ontology namespace; the join key between the database row and the ontology. |
+| **Property** | (focus node) |
+| **Value domain** | IRI |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every row has exactly one IRI. |
+| **Status** | generated |
+
+: {tbl-colwidths="[22,78]"}
+
+## `anonymisation_area.id`: area id
+
+| | |
+|---|---|
+| **Czech name** | identifikátor oblasti |
+| **Definition** | The publisher's integer identifier of an anonymisation area in its list of areas. |
+| **Property** | dcterms:identifier `dcterms:identifier` |
+| **Value domain** | xsd:integer |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every anonymisation area has exactly one integer identifier assigned by the publisher. |
+| **Source field (CSV)** | `id` |
+| **Status** | reused (dcterms) |
+
+: {tbl-colwidths="[22,78]"}
+
+## `anonymisation_area.centre_latitude`: centre latitude
+
+| | |
+|---|---|
+| **Czech name** | zeměpisná šířka středu |
+| **Definition** | A coordinate property that gives the WGS-84 latitude of the centre of an anonymisation area, the point published as the location of every offence record in the area. |
+| **Scope note** | Not the geometric centroid of the polygon: the publisher's defining point (field def\_bod\_y), a K-means cluster centre, moved inside the municipality where needed. |
+| **Property** | centre latitude `krim:centreLatitude` |
+| **Value domain** | xsd:decimal; from -90 to 90 |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every anonymisation area has exactly one centre latitude between -90 and 90 degrees. |
+| **Source field (CSV)** | `def_bod_y` |
+| **Status** | draft |
+
+: {tbl-colwidths="[22,78]"}
+
+## `anonymisation_area.centre_longitude`: centre longitude
+
+| | |
+|---|---|
+| **Czech name** | zeměpisná délka středu |
+| **Definition** | A coordinate property that gives the WGS-84 longitude of the centre of an anonymisation area, the point published as the location of every offence record in the area. |
+| **Scope note** | Not the geometric centroid of the polygon; see krim:centreLatitude. The publisher's field def\_bod\_x. |
+| **Property** | centre longitude `krim:centreLongitude` |
+| **Value domain** | xsd:decimal; from -180 to 180 |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every anonymisation area has exactly one centre longitude between -180 and 180 degrees. |
+| **Source field (CSV)** | `def_bod_x` |
+| **Status** | draft |
+
+: {tbl-colwidths="[22,78]"}
+
+## `anonymisation_area.municipality_code`: municipality
+
+| | |
+|---|---|
+| **Czech name** | obec |
+| **Definition** | A relation that places an anonymisation area in the municipality whose territory contains it. |
+| **Scope note** | Given by the publisher's list of areas (field kod\_obec); every area lies in exactly one municipality. |
+| **Property** | in municipality `krim:inMunicipality` |
+| **Value domain** | code from codelist municipality (6258 values, see appendix) |
+| **Cardinality** | 1..1 |
+| **Business rule** | Every anonymisation area lies in exactly one municipality. |
+| **Source field (CSV)** | `kod_obec` |
+| **Status** | draft |
+
+: {tbl-colwidths="[22,78]"}
 
 \newpage
 
@@ -296,8 +470,7 @@ An offence record is an information record, kept by the Police of the Czech Repu
 | `iri` | offence record IRI | TEXT | no | UNIQUE |
 | `id` | record id | INTEGER | no | PK |
 | `report_datetime` | report date and time | TEXT | no |  |
-| `latitude` | anonymised latitude | REAL | no |  |
-| `longitude` | anonymised longitude | REAL | no |  |
+| `area_id` | anonymisation area | INTEGER | no | FK -> anonymisation\_area(id) |
 | `municipal_police` | recorded by municipal police | INTEGER | no |  |
 | `clearance_state_code` | clearance state | INTEGER | no | FK -> clearance\_state(code) |
 | `location_relevance_code` | location relevance | INTEGER | no | FK -> location\_relevance(code) |
@@ -350,35 +523,18 @@ An offence record is an information record, kept by the Police of the Czech Repu
 
 : {tbl-colwidths="[22,78]"}
 
-## `offence_record.latitude`: anonymised latitude
+## `offence_record.area_id`: anonymisation area
 
 | | |
 |---|---|
-| **Czech name** | anonymizovaná zeměpisná šířka |
-| **Definition** | A coordinate property that gives the WGS-84 latitude of the centre of the anonymisation polygon into which the recorded location falls. |
-| **Scope note** | Not the true place of the act. Municipalities are split into Voronoi polygons around K-means cluster centres, and every location is moved to its polygon's centre; small municipalities form a single polygon. Realises the source field "y"; note that the publisher's OpenAPI description mislabels x as latitude and y as longitude. |
-| **Property** | anonymised latitude `krim:anonymisedLatitude` |
-| **Value domain** | xsd:decimal; from -90 to 90 |
+| **Czech name** | anonymizační oblast |
+| **Definition** | A relation that places an offence record in the anonymisation area whose centre is published as the record's location. |
+| **Scope note** | Derived by the loader: the published point is the centre of exactly one area. A point that is no area's centre is a data error and is reported, never placed in the nearest area. |
+| **Property** | in anonymisation area `krim:inAnonymisationArea` |
+| **Value domain** | identifier of a row in anonymisation\_area |
 | **Cardinality** | 1..1 |
-| **Business rule** | Every offence record has exactly one anonymised latitude between -90 and 90 degrees. |
-| **Source field (CSV)** | `y` |
-| **Status** | archaic |
-
-: {tbl-colwidths="[22,78]"}
-
-## `offence_record.longitude`: anonymised longitude
-
-| | |
-|---|---|
-| **Czech name** | anonymizovaná zeměpisná délka |
-| **Definition** | A coordinate property that gives the WGS-84 longitude of the centre of the anonymisation polygon into which the recorded location falls. |
-| **Scope note** | Not the true place of the act; see krim:anonymisedLatitude. Realises the source field "x". |
-| **Property** | anonymised longitude `krim:anonymisedLongitude` |
-| **Value domain** | xsd:decimal; from -180 to 180 |
-| **Cardinality** | 1..1 |
-| **Business rule** | Every offence record has exactly one anonymised longitude between -180 and 180 degrees. |
-| **Source field (CSV)** | `x` |
-| **Status** | archaic |
+| **Business rule** | Every offence record lies in exactly one anonymisation area, the one whose centre is its published point. |
+| **Status** | draft |
 
 : {tbl-colwidths="[22,78]"}
 
@@ -801,8 +957,8 @@ business glossary lists current terms only.
 
 | Term | Replaced by | Still a column | Note |
 |---|---|---|---|
-| `krim:anonymisedLatitude` (anonymised latitude) | krim:centreLatitude, krim:inAnonymisationArea | `offence_record.latitude` | Deprecated in iteration 2: the published point belongs to the record's anonymisation area, not to the record. Use krim:inAnonymisationArea, then krim:centreLatitude of the area. |
-| `krim:anonymisedLongitude` (anonymised longitude) | krim:centreLongitude, krim:inAnonymisationArea | `offence_record.longitude` | Deprecated in iteration 2: the published point belongs to the record's anonymisation area, not to the record. Use krim:inAnonymisationArea, then krim:centreLongitude of the area. |
+| `krim:anonymisedLatitude` (anonymised latitude) | krim:centreLatitude, krim:inAnonymisationArea | no | Deprecated in iteration 2: the published point belongs to the record's anonymisation area, not to the record. Use krim:inAnonymisationArea, then krim:centreLatitude of the area. |
+| `krim:anonymisedLongitude` (anonymised longitude) | krim:centreLongitude, krim:inAnonymisationArea | no | Deprecated in iteration 2: the published point belongs to the record's anonymisation area, not to the record. Use krim:inAnonymisationArea, then krim:centreLongitude of the area. |
 
 : Deprecated terms {tbl-colwidths="[24,24,16,36]"}
 
@@ -813,6 +969,12 @@ business glossary lists current terms only.
 Allowed values of the codelist columns, from the SKOS reference data. Labels in
 Czech come from the publisher; English labels and definitions are maintained in
 `ontology/reference/codelist-texts.csv`.
+
+## `municipality`
+
+6258 municipalities and military training areas: the standard codelist of the
+Czech Statistical Office, ČSÚ codelist 43 (<https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=43>);
+RÚIAN uses the same codes. Not listed here.
 
 ## `clearance_state`
 
