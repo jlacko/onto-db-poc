@@ -1,0 +1,576 @@
+---
+title: "Building and Running Ontologies with LLMs"
+subtitle: "Second edition (draft): authoring with an LLM, sharing with business readers, driving a database, and changing a released model. Worked example: Czech police crime records."
+date: 2026-11-22
+format:
+  pdf:
+    documentclass: scrartcl
+    papersize: a4
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    colorlinks: true
+    mainfont: "Noto Serif"
+    sansfont: "Noto Sans"
+    monofont: "Noto Sans Mono"
+    fontsize: 10pt
+    geometry: margin=2.2cm
+    code-block-font-size: \footnotesize
+    include-in-header:
+      text: |
+        \usepackage{fvextra}
+        \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}
+---
+
+# About this edition
+
+The first edition collected practices for building an ontology with an LLM and
+keeping it useful to people and systems. This edition keeps its four parts
+(authoring, sharing, data, lifecycle) and revises them after one proof of
+concept that followed the guide end to end: an ontology, its validation loop,
+a generated SQLite database, a data dictionary and a business glossary, built
+with Claude Code and then changed once after its first release. The examples
+come from that project instead of finance and controlling.
+
+The main changes, each explained where it belongs:
+
+- a new **first step**: state how the key concepts relate, in a few sentences a
+  domain expert can judge, before writing competency questions;
+- competency questions with **expected answers written by the expert by hand**,
+  tested in **two query layers** (SPARQL and SQL);
+- **reuse by definition, not by name**, checked against the vocabulary's own file;
+- every check in the validation loop has a **negative test**, and every
+  generated artifact a **drift check**;
+- the source's **packaging is not the domain**: file splits, pagination and API
+  resources must not become concepts;
+- **physical design** as part of the bridge from shapes to schema;
+- **iterating on a released model**: the steps to revisit, and deprecation in
+  every generated artifact.
+
+## The worked example
+
+The Police of the Czech Republic publish offence records as open data
+(*Mapa kriminality*, `kriminalita.policie.gov.cz`). Each record is one act
+reported to or detected by the police, with a report date and time, one or
+more offence types from a three-level classification, a clearance state
+(probable offender identified, unsolved, act did not occur, not an offence),
+what the published place stands for (place of commission, of report, …), and
+an anonymised place. The data are downloaded as monthly CSV files, which are
+regenerated as investigations progress.
+
+The proof of concept built a continuous history of one year: 1.38 million
+records, one row per occurrence in its latest state, each record placed in one
+of 39,927 anonymisation areas and each area in one of 6,258 municipalities.
+The data are small enough to reason about and real enough to contain every
+difficulty this guide discusses.
+
+# Part I: Authoring
+
+## The recommended sequence
+
+> Reconnaissance $\rightarrow$ concepts and how they relate $\rightarrow$
+> competency questions $\rightarrow$ reuse survey $\rightarrow$ skeleton
+> $\rightarrow$ definitions $\rightarrow$ reference data $\rightarrow$ shapes
+> $\rightarrow$ test suite $\rightarrow$ validation loop $\rightarrow$ data model,
+> loader, dictionary and glossary $\rightarrow$ iterate.
+
+Each step says who does the work. In the proof of concept the split was
+stable: the **LLM** drafts (questions, terms, definitions, shapes, queries),
+the **human domain expert** decides (verdicts, hand answers, decisions in the
+spec, wording in their language), and **scripts** do everything that must be
+repeatable (reference data, schema, dictionary, glossary, validation, loading).
+None of it needs a GUI editor; the source files plus the validation loop are
+the ontology.
+
+**Reconnaissance, with a warning.** When the ontology describes an existing
+dataset, read the source first: its documentation, codelists and a sample of
+records. But the source's packaging is not the domain. In the example, the
+publisher splits downloads by month to keep files manageable; the first draft
+modelled a *monthly extract* as a concept, and four competency questions
+grouped by it. The domain expert caught it, not a tool. Ask the expert, for
+each structure in the source: does this carry meaning, or is it delivery?
+
+## Practice 1: State how the concepts relate, before anything else
+
+Before the competency questions, write the relationships between the key
+concepts as **a handful of sentences in domain language**, each with both
+ends: *how many of B for one A, and how many of A for one B*. The domain expert
+marks each one true, false or "depends". A judgement takes seconds and needs
+no technical knowledge.
+
+> *An offence record has one or more offence types; an offence type covers any
+> number of records.*
+>
+> *An offence record is placed in exactly one anonymisation area; an area holds
+> any number of records.*
+>
+> *An anonymisation area lies in exactly one municipality; a municipality has
+> one or more areas.*
+
+Ask two questions of each sentence: is it true **in the world**, and is it what
+**the source** chose to keep? An offence can involve several places (where it
+was reported, committed, or had consequences); the publisher keeps one per
+record and says which kind it is. Writing both answers down keeps the source's
+choices from passing as facts of the domain.
+
+Why this step: the two largest corrections in the example were structural, not
+wrong answers. The monthly extract was modelled as a concept, and the
+anonymised place as a value on the record when it is a shared area (many
+records, one area). Competency questions caught neither, because they ask for
+answers, not for what exists and how many.
+
+Keep it short, or it stops being the expert's. The LLM's first draft had 21
+statements; most were about attributes (identifier, dates, flags), which no
+domain expert has an opinion on and which belong to the shapes. Cut to
+relationships only, both ends in one sentence, the current model only, it was
+seven. An LLM drafting a checklist tends to make it complete rather than short;
+ask what the checklist is *for*.
+
+Make the sentences traceable: each names the SHACL shape that enforces it, and
+the validation loop checks that every sentence marked true is enforced with
+the same cardinality, and that no shape enforces a sentence marked false. A true
+sentence not yet modelled is a warning: a to-do for the later steps.
+
+## Practice 2: Competency questions are an executable spec
+
+Have the LLM draft 15–30 questions the ontology must answer, with precise
+parameters and the **decision** each one forces, and treat the file as the
+specification. In the example:
+
+> *CQ03. For each category, how many records are there, how many have a
+> probable offender identified, and what is the clearance rate?*
+> *Decision: records concluded as "act did not occur" or "not an offence" are
+> excluded from the denominator; categories with no remaining records are
+> omitted.*
+
+Then make the questions executable, in four ways the first edition did not
+spell out:
+
+- **The expert writes the expected answers by hand**, from a small sample, for
+  the key questions. The value is in the disagreements. In the example, five
+  hand answers took ten disagreements to settle: three slips by the expert,
+  five imprecise questions or data presentations, two faults of the validator.
+  A method that treats the expert as the oracle would have "fixed" the queries
+  to match a slip; one that treats the queries as the oracle would have missed
+  the imprecise questions. In the second iteration, with sharper questions,
+  both hand answers matched on the first try.
+- **Never show the expert the computed answer** before they commit to theirs.
+  On failure, the validator says *where* an answer disagrees (missing rows,
+  which columns differ) but not the values, unless asked.
+- **Answer every question in two query layers** where a database is the
+  target: SPARQL on the sample RDF and SQL on a database generated from the
+  same sample, and require them to agree. In the example this caught a silent
+  tooling failure: a SPARQL engine that mishandled escaped prefixed names
+  returned zero burglaries without an error.
+- **Give the sample in the format of the reader's task.** For answering by
+  hand, that is CSV for a spreadsheet, with helper columns (a record's
+  categories, each area's municipality), not a Markdown table. Questions that
+  depend on empty groups should say whether empty groups are listed (records
+  per area: list empty areas as 0) or omitted (records per municipality: omit
+  municipalities with no records), because the expert will ask.
+
+A question the data cannot answer is recorded as a **known gap** with what
+closing it would take. In the example, *which municipality?* was a gap in the
+first version and was closed in the second.
+
+## Practice 3: Pick an LLM-friendly source format
+
+Turtle for OWL and SHACL remains a good choice: compact, readable in diffs,
+close to what the model has seen. The example used Turtle for the ontology and
+the shapes, CSV for hand-maintained translations of codelist items, and
+Markdown for the two specification files (concept sentences and competency
+questions), with fenced blocks the validator parses. LinkML is the alternative
+when the ontology is mostly a data model; the example did not need it, because
+about 300 lines of Python (an interpreter of the shapes and a DDL generator) turned the shapes into SQL (Part III).
+
+## Practice 4: Write for natural-language readers
+
+An LLM reads an ontology through its text. Every class and property gets a
+label, a definition in genus–differentia form, an example, and a scope note
+saying what it does not cover:
+
+> *An offence record is an information record, kept by the Police of the Czech
+> Republic, about one act reported to or detected by the police that is
+> suspected to be a crime or a misdemeanour.*
+> *Scope note: the record, not the act; a record exists even when the police
+> later conclude that the act did not occur.*
+
+**Two definitions, two audiences.** Keep the formal definition in English for
+modellers, and give business readers a second, plain definition in their own
+language (`krim:businessDefinition@cs` in the example), not a translation of
+the first. Use the publisher's own terms where they exist (*třída deliktu*,
+the publisher's word, not a translation of "offence type"). Have a native
+speaker review the business text; an LLM's translations are usable but
+awkward.
+
+**Every rule as a sentence.** Each SHACL property shape carries the rule as one
+plain sentence, in both languages: *"Every offence record lies in exactly one
+anonymisation area."* The glossary and the dictionary print these sentences;
+the validator checks that each rule has one.
+
+## Practice 5: Reuse by definition, not by name
+
+Ask the LLM to propose existing vocabularies before inventing terms, and to
+**read each candidate's own published file** before proposing a term from it,
+instead of answering from memory. The example reused SKOS (codelists),
+Dublin Core, PROV-O (a record is a `prov:Entity`; "state as of" refines
+`prov:generatedAtTime`), WGS84 (coordinates), GeoSPARQL (areas and
+municipalities are features; "lies in" refines `sfWithin`) and the term-status
+vocabulary.
+
+Three rules came out of it:
+
+- **The definition decides, not the name.** GeoSPARQL's `hasCentroid` looked
+  made for an area's centre. Its definition is the arithmetic mean of the
+  geometry's points; the publisher's centre is a K-means cluster centre,
+  sometimes moved inside the municipality. Reusing it would have asserted
+  something false, quietly. The definition of the local term now says what the
+  centre is *not*.
+- **Link, don't adopt, fragile identifiers.** The publisher's codelist IRIs do
+  not resolve and contain a typo and a version segment; they are linked with
+  `skos:exactMatch`, not used as identifiers. A national register whose
+  linked-data IRIs redirect to a web page is not linked at all; its code is the
+  join key.
+- **Exact or close, as the domain says.** The statistical office's codelist of
+  municipalities includes four military training areas, which are not
+  municipalities in law. The expert decided they count as municipalities in the
+  project, so the class is a *close* match to the legal term, not an exact one.
+
+Reused generic properties need a local name and definition when they become
+data (Part III), and reused terms need OWL declarations so a DL reasoner
+accepts them.
+
+## Practice 6: Keep axioms modest and validate mechanically
+
+A lean OWL model for meaning (no `rdfs:domain`/`rdfs:range`, a few
+disjointness axioms) and SHACL for what valid data look like remains the right
+split. The validation loop runs after every change, and in the example had
+eight sections:
+
+| Section | Passes when |
+|---|---|
+| Parse | all Turtle files parse |
+| Reasoner | HermiT finds the model and sample consistent, *and* a contradictory individual inconsistent |
+| Concepts | every concept sentence marked true is enforced by its shape, with the same cardinality |
+| Lint | labels in both languages, one definition, a status, no duplicates, no undeclared terms, rules as sentences, dictionary and glossary text complete; a deprecated term names its replacement |
+| SHACL | the sample conforms; exactly the expected warnings; each negative test fails for its stated reason |
+| Generated artifacts | schema, dictionary, glossary, sample tables and the question index are current (drift check) |
+| Competency questions | SPARQL = SQL = the expert's expected answer |
+| Loader | one occurrence ends as one row in its latest state, in any load order; points are matched to areas |
+
+: The validation loop {tbl-colwidths="[22,78]"}
+
+Three habits make the loop trustworthy:
+
+- **Every check has a negative test.** A check that has never failed proves
+  nothing. The example keeps invalid individuals, each breaking exactly one
+  rule and annotated with the violation it must produce; a rule between two
+  nodes (a duplicate identifier) also names the partner it flags.
+- **Every generated artifact has a drift check.** The loop regenerates the
+  schema, dictionary and glossary in memory and fails if the committed files
+  differ. Generated files are never edited by hand.
+- **Don't bend the checker to fit an answer.** When the expert's answer failed
+  for a missing separator, the right fix was the answer, not a more lenient
+  parser. A crashed section is reported as a failure and the others still run.
+
+The typical LLM errors of the first edition all appeared, plus new ones; they
+are collected in Appendix A.
+
+## Practice 7: Small modules under git, with a CLAUDE.md
+
+One file per module, a `CLAUDE.md` with namespaces, naming and definition
+style, the reused vocabularies, which files are generated and from what, and
+the validation command. Work in a branch per iteration, merge with a merge
+commit so an iteration stays one unit in the history, and tag each release.
+A commit may knowingly fail validation in the middle of an iteration (in the
+example, the shapes changed before the sample data did) if the commit message
+names the expected failures and the next step clears them.
+
+# Part II: Sharing with non-technical readers
+
+The ontology stays the single source; everything business readers see is
+generated from it. In the example the reader was a domain expert who reads
+Czech: the raw data are Czech, so the business glossary is Czech, clearly
+distinct from the English data dictionary. The principle is **English
+internals, Czech business translations**.
+
+## Choose the format by the reader's task
+
+| Deliverable | Reader's task | Format |
+|---|---|---|
+| Business glossary | read, look up, print | PDF table (landscape), in the readers' language |
+| Data dictionary | review and comment | Excel with *Comments* and *Agree?* columns; PDF and CSV for reference |
+| Sample data | answer questions by hand | CSV for a spreadsheet |
+| Specification (concept sentences, competency questions) | edit and decide | Markdown, in git |
+
+: Formats by task {tbl-colwidths="[26,30,44]"}
+
+The first edition proposed Excel for the glossary. In the example the reader
+asked for a PDF: a glossary is read, not edited, and comments go to the
+dictionary review.
+
+## What the glossary contains
+
+One row per current term: the term, its plain definition, an example, what it
+is not to be confused with, other names, and where it is recorded in the data
+dictionary. Deprecated terms are left out; the dictionary keeps them.
+
+| Pojem | Význam | Příklad | Nezaměňovat s |
+|---|---|---|---|
+| **anonymizační oblast** | Oblast, do jejíhož středu vydavatel posune místo každého skutku, který v ní leží. | Oblast 29789 v Praze. | Správní jednotka nebo skutečné místo skutku. |
+| **třída deliktu** | Třída kriminalisticko-statistické evidence Policie ČR, podle které se záznamy třídí podle druhu skutku. | Krádeže vloupáním – byt (kód 19). | Právní kvalifikace podle trestního zákoníku. |
+
+: Glossary entries from the example (*anonymisation area*, *offence type*) {tbl-colwidths="[18,40,20,22]"}
+
+Besides the terms, the glossary carries the record rules as sentences, a few
+worked examples generated from the sample data (*"Record 1013 falls into two
+categories, a crime type and a misdemeanour"*), the small codelists in full, the
+type hierarchy as an indented tree, and a concept diagram drawn by Graphviz
+from the shapes. Every page is stamped with the ontology release.
+
+## Closing the loop
+
+Send the Excel dictionary out for comments; the LLM reads the returned sheet,
+proposes changes in the source, and shows the diff for approval. Corrections
+to the Czech wording go into the source annotations (`@cs`), never into the
+PDF. A disagreement between reviewers often reveals two concepts sharing one
+name, which the ontology should resolve.
+
+# Part III: Ontology and data
+
+## Concepts, terms and data elements
+
+Keep three layers apart:
+
+| Layer | Lives in | Example |
+|---|---|---|
+| Concept | ontology (an IRI) | `krim:AnonymisationArea`: one of a fixed set of polygons to whose centre every recorded place inside it is moved |
+| Term | glossary, per language | "anonymisation area", "anonymizační oblast", "Voroného polygon" |
+| Data element | data dictionary, schema | `offence_record.area_id`: integer, references `anonymisation_area(id)` |
+
+: Three layers {tbl-colwidths="[18,24,58]"}
+
+The IRI is the join key between them. In ISO/IEC 11179 terms, a data element
+is an object class (the class a table realises) plus a property (the property a
+column realises) plus a value domain. The data dictionary in the example is
+generated with 19 fields per column, from the ontology and the shapes, and is
+also written into the database as a table.
+
+**A reused generic property makes the dictionary vaguer.** A column that
+realises `dcterms:identifier` inherits a definition that fits anything. Give
+each such column a local name and definition on the shape (*"the publisher's
+integer identifier of an offence record, stable across download files"*), or
+use a specific sub-property. The validator enforces both.
+
+## From shapes to schema, including physical design
+
+SHACL maps almost one to one onto a relational schema. A small interpreter,
+guided by a handful of database-mapping hints in a separate namespace
+(`kdb:`), generated the whole SQLite schema:
+
+| SHACL | SQL |
+|---|---|
+| node shape with `kdb:table` | table, with an IRI column |
+| `sh:datatype`, `sh:minCount 1`, ranges | column type, NOT NULL, CHECK |
+| `sh:maxCount 1` | a column; otherwise a link table |
+| `sh:class C` | a foreign key to the table of C |
+| language columns hint | one column per language |
+| self-reference (`skos:broader`) | a recursive closure view |
+| warning severity | not enforced; reported by the loader |
+| foreign-key column | **an index** |
+| `kdb:index`, `kdb:uniqueColumns` | an index; a unique index (the counterpart of a SPARQL uniqueness rule) |
+
+: Shapes to SQL {tbl-colwidths="[40,60]"}
+
+The last two rows are new in this edition. The generated schema was correct
+but had no index on a new foreign key, and the first quality check on 1.38
+million records ran for over ten minutes before it was stopped. SQLite does not
+index foreign keys itself. A rule (index every foreign-key column) plus two
+hints fixed it and kept the whole schema generated; a full rebuild takes under
+two minutes. Asked whether to parallelise the load, the answer was no: the time
+was in one query, not in a busy core. Measure before optimising.
+
+## Ontology, reference data and operational data
+
+| Content | Example | Lives in |
+|---|---|---|
+| Ontology | classes, properties, definitions, shapes | versioned Turtle files |
+| Reference data: codelists | offence types, clearance states, location relevance; municipalities (ČSÚ codelist 43) | SKOS concept schemes generated next to the ontology |
+| Reference data: datasets | 39,927 anonymisation areas | the database and the test sample only |
+| Operational data | offence records | the database and the test sample only |
+
+: Kinds of content {tbl-colwidths="[24,46,30]"}
+
+The boundary between a codelist and a dataset is a new line in this edition. A
+codelist is something people look up by code and agree on (6,258 municipalities
+qualify); a list of 40,000 polygons is reference data, but nobody looks up an
+area by its number, so it stays out of the Turtle files. Codelists are
+generated from the publisher's files, with hand-maintained translations in one
+CSV, and fill the lookup tables of the database, so the database and the
+glossary share one source.
+
+## Continuous history, not pagination
+
+The example's goal was one row per occurrence in its latest known state. Each
+record therefore has two times: the **report time** (when the act was
+reported) and the **observation time** (when the publisher reported the state
+we hold, `krim:stateAsOf`). The loader merges by "latest observation wins":
+a record read again replaces the stored one if its observation is the same or
+newer, whatever the order in which files are loaded. A clearance rate is then
+an "as of" figure, and the dictionary says so.
+
+The same separation applies to places: the publisher's point is not stored on
+the record; it is matched to an area's centre (exactly, or within one
+micro-degree, since the publisher rounds to six decimals). A point that is no
+area's centre is reported and the record skipped, never placed in the nearest
+area: a silent nearest-neighbour fix would hide that the publisher has changed
+its areas.
+
+Be polite to the source: cache downloads with the publisher's timestamp beside
+them, fetch again only when the publisher has a newer version and the cached
+copy is old enough, and offer an offline mode. A normal run costs one small
+listing request.
+
+## The test suite
+
+Keep a small, hand-made sample next to the ontology: in the example, 13
+fictional records with real codes and real areas, chosen so that every
+competency question and every shape is exercised (a record that is both a
+crime and a misdemeanour; areas with no records; a single-area military
+training area), plus one clearly marked fictional area outside the country
+that must raise the warning. Generate the spreadsheet versions from it; never
+maintain them by hand.
+
+# Part IV: Lifecycle
+
+An ontology is released like a library other systems depend on. The rules of
+the first edition held: identifiers are permanent, meanings do not change under
+an IRI, terms are deprecated, never deleted, and every consumer records the
+release it was built from (the schema carries a release table; the dictionary
+and glossary are stamped).
+
+## Iterating on a released model
+
+The example's second iteration started from a domain fact found after release,
+on the publisher's website rather than in the API documentation: every
+published place is the centre of one of a fixed list of areas. The method
+absorbed it as a loop, and every step had an obvious place for its part:
+
+1. two new concept sentences (record in area, area in municipality), judged by
+   the expert;
+2. five new competency questions, one known gap closed;
+3. a reuse survey, including what not to reuse (`hasCentroid`);
+4. new terms, and the record's coordinates **deprecated**: `owl:deprecated
+   true`, `dcterms:isReplacedBy` the area and its centre;
+5. definitions in both languages; a new codelist from the statistical office;
+6. new shapes, committed with the expected failures named;
+7. new sample data, negative tests and queries;
+8. a loader that matches places to areas; indexes by rule;
+9. a release: version, prior version, regenerated artifacts, merge and tag.
+
+**Deprecation reaches every artifact.** The deprecated term stays in the
+ontology with its replacement; a lint rule requires the replacement and warns
+while shapes still use the term; the data dictionary lists deprecated terms in
+an appendix; the business glossary shows current terms only.
+
+**A changed meaning is a breaking change.** Before 1.0, semantic versioning
+marks it with a minor version: the example went from 0.1.0 to 0.2.0, with
+`owl:priorVersion` pointing back. From 1.0 on, the same change would be a major
+version.
+
+**Renaming is free only before the first release.** In the example a property
+was renamed (the timestamp turned out to be report time, not commission time)
+and three terms were removed (the monthly extract) before 0.1.0; after a
+release both would have required deprecation.
+
+## Environments and releases
+
+Keep the environment out of the IRIs; terms stay the same in development,
+test and production, and only the version changes. Release the ontology,
+shapes, schema, dictionary and glossary from the same commit, as one bundle.
+Freeze releases when downstream consumers are busiest (a reporting close in
+finance; a publisher's regeneration cycle here).
+
+## Two time axes, again
+
+Keep "which release defined this term" apart from "when was this item in
+force". Reference data need effective dating inside the data (an area list
+dated 2022 still matched every 2025 record; a municipality codelist has
+validity dates per item), separately from the ontology's release number. The
+data themselves add a third pair: report time and observation time (Part III).
+
+# Appendix A: Typical LLM errors
+
+From the first edition, all seen again:
+
+- subclass confused with part-of or instance-of;
+- duplicate concepts under different names;
+- `rdfs:domain` / `rdfs:range` used as constraints (they are inference rules).
+
+New in this edition, each seen in the example:
+
+- **Meaning assumed from a field name.** The timestamp was modelled as the time
+  of the incident; the publisher's help says it is the time of report.
+- **The source's packaging taken for a concept.** Monthly download files
+  modelled as a domain class.
+- **Reuse by name.** A vocabulary term proposed because its name fits, while
+  its definition does not (`hasCentroid`).
+- **OWL 2 datatype map violations.** `xsd:gYearMonth` and `xsd:date` are not in
+  the OWL 2 datatype map; a DL reasoner rejects them.
+- **SHACL severity scope.** `sh:severity` on a node shape is not inherited by
+  its property shapes; a warning shape must set it on each.
+- **Silent tooling failures.** A SPARQL engine mishandled escaped prefixed
+  names (`krimc:type\/18`) and returned an empty result without error. Two
+  query layers caught it.
+- **Host-language collisions.** In rdflib a namespace is a string, so
+  `KDB.index` returned Python's `str.index` method instead of the IRI, and a
+  mapping hint silently had no effect. Use `KDB["index"]`.
+- **Correct but slow generated code.** A schema with no index on a foreign key.
+- **Checklists that grow.** A first draft of concept statements with 21 entries
+  where seven were needed.
+- **Leaking the answer.** A validator that printed the computed answer to an
+  expert who had not finished theirs.
+
+Two errors were the human's, and the method should expect them: arithmetic
+slips in hand answers, and a format rule (a mandatory separator) forgotten.
+Neither side is the oracle.
+
+# Appendix B: What changed from the first edition
+
+| First edition | Second edition |
+|---|---|
+| Sequence starts with competency questions | Starts with reconnaissance and concept sentences; the warning about packaging |
+| Competency questions become SPARQL tests | Expected answers by the expert, values hidden on failure, SPARQL and SQL must agree |
+| Reuse before inventing | Reuse by definition, read the vocabulary's file; link fragile IDs; exact vs close match |
+| Reasoner, report, CQ tests | Eight-section loop with negative tests, drift checks, concept tracing, loader tests |
+| Excel glossary | Format by the reader's task: PDF glossary, Excel dictionary review, CSV samples |
+| Shapes map onto the data model | The same, plus local definitions for reused properties and indexes by rule |
+| Reference data with the ontology | Codelists with the ontology; large reference datasets in the database only |
+| Lifecycle rules | The same, exercised: iterating on a release, deprecation in every artifact, pre-1.0 versions |
+
+: Changes {tbl-colwidths="[38,62]"}
+
+# Appendix C: The example project
+
+| Artifact | File |
+|---|---|
+| Concept sentences | `ontology/concepts.md` |
+| Competency questions | `ontology/competency-questions.md` |
+| Ontology, shapes | `ontology/kriminalita.ttl`, `ontology/shapes.ttl` |
+| Reference data | `ontology/reference/*.ttl` (generated), `codelist-texts.csv` |
+| Test suite | `ontology/tests/` (sample, invalid data, queries, observation fixtures) |
+| Schema, dictionary | `db/schema.sql`, `db/data-dictionary.*`, `docs/data-dictionary.pdf` (generated) |
+| Glossary | `docs/glossary.pdf` (generated, Czech) |
+| Validation loop, loader | `scripts/validate.py`, `scripts/load.py` |
+| Conventions | `CLAUDE.md` |
+| Write-ups | `docs/action-plan.pdf`, `docs/lessons-learned.pdf` |
+
+: The proof of concept {tbl-colwidths="[30,70]"}
+
+**References.** The day-to-day release practice (branches, CI checks, release
+candidates, deprecation instead of deletion) follows the OBO Foundry and its
+Ontology Development Kit. Competency questions come from eXtreme Design and
+NeOn. Terminology: ISO 704 and ISO 1087; metadata registries: ISO/IEC 11179;
+rules as sentences: SBVR and ORM; data governance: DAMA-DMBOK. Vocabularies
+reused in the example: SKOS, Dublin Core, PROV-O, W3C WGS84, OGC GeoSPARQL, the
+Czech semantic government vocabulary, and the ČSÚ codelist of municipalities.
