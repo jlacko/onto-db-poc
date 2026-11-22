@@ -1,0 +1,6 @@
+# CQ28 Municipalities whose kraj differs between the ORP branch and the okres branch (expected: none).
+SELECT ?municipality WHERE {
+  ?m a krim:Municipality ; skos:notation ?municipality ;
+     krim:inOrpArea/krim:inKraj ?viaOrp ; krim:inOkres/krim:inKraj ?viaOkres .
+  FILTER(?viaOrp != ?viaOkres)
+}

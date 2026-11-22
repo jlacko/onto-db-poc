@@ -1,0 +1,7 @@
+# CQ27 ORP area, okres and kraj of the military training area Boletice (545422).
+SELECT ?municipality ?orp ?okres ?kraj WHERE {
+  ?m a krim:Municipality ; skos:notation ?municipality .
+  FILTER(?municipality = 545422)
+  ?m krim:inOrpArea/skos:notation ?orp ; krim:inOkres ?o .
+  ?o skos:notation ?okres ; krim:inKraj/skos:notation ?kraj .
+}

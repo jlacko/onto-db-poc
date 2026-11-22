@@ -3,7 +3,8 @@
     .venv/bin/python scripts/render_sample.py
 
 Writes (generated from ontology/tests/sample-data.ttl; do not edit):
-  ontology/tests/sample-records.csv   one row per record
+  ontology/tests/sample-records.csv   one row per record, with its area, municipality, ORP area,
+                                      okres and kraj
   ontology/tests/sample-types.csv     the offence types used, with broader type and category
   ontology/tests/sample-areas.csv     the anonymisation areas, with municipality and centre
 UTF-8, comma-separated, dot as decimal separator. Multi-valued cells (a record's
@@ -55,6 +56,8 @@ def render() -> dict:
         st, rel = g.value(r, KRIM.hasClearanceState), g.value(r, KRIM.hasLocationRelevance)
         a = g.value(r, KRIM.inAnonymisationArea)
         m = g.value(a, KRIM.inMunicipality)
+        orp, okres = g.value(m, KRIM.inOrpArea), g.value(m, KRIM.inOkres)
+        kraj = g.value(okres, KRIM.inKraj)  # the same through the ORP area (MunicipalityKrajShape)
         types = sorted(g.objects(r, KRIM.hasOffenceType), key=lambda t: code(g, t))
         used |= set(types)
         cats = sorted({code(g, top_of(g, t)) for t in types})
@@ -62,6 +65,7 @@ def render() -> dict:
             str(g.value(r, DCTERMS.identifier)),
             dt[:10], dt[11:16], dt[:7],
             str(g.value(a, DCTERMS.identifier)), code(g, m), label(g, m, "cs"),
+            code(g, orp), label(g, orp, "cs"), code(g, okres), label(g, okres, "cs"), code(g, kraj), label(g, kraj, "cs"),
             str(g.value(a, KRIM.centreLatitude)), str(g.value(a, KRIM.centreLongitude)),
             "yes" if g.value(r, KRIM.recordedByMunicipalPolice).toPython() else "no",
             code(g, st), label(g, st), code(g, rel), label(g, rel),
@@ -70,8 +74,8 @@ def render() -> dict:
             str(g.value(r, KRIM.stateAsOf)),
         ])
     records = _csv(["record", "report_date", "report_time", "report_month", "area", "municipality_code",
-                    "municipality", "centre_latitude", "centre_longitude",
-                    "municipal_police", "state_code", "state", "relevance_code", "relevance", "types",
+                    "municipality", "orp_area_code", "orp_area", "okres_code", "okres", "kraj_code", "kraj",
+                    "centre_latitude", "centre_longitude", "municipal_police", "state_code", "state", "relevance_code", "relevance", "types",
                     "categories", "state_as_of"], rows)
 
     trows = []

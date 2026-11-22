@@ -1,0 +1,5 @@
+# CQ29 ORP areas whose municipalities lie in more than one okres, and in how many.
+SELECT ?orp (COUNT(DISTINCT ?o) AS ?okresy) WHERE {
+  ?m a krim:Municipality ; krim:inOrpArea ?p ; krim:inOkres ?o .
+  ?p skos:notation ?orp .
+} GROUP BY ?orp HAVING (COUNT(DISTINCT ?o) > 1)

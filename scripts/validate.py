@@ -718,7 +718,11 @@ def check_cq(rep: Report):
             if exp.get("hand") and not SHOW_ANSWERS:
                 mine = as_set(exp["expected"])
                 keys = {r[0] for r in mine}
-                hint = hand_hint(exp["header"], mine, [r for r in got if r[0] in keys] if exp.get("fill") else got)
+                if exp.get("fill") and keys & {r[0] for r in got}:
+                    hint = hand_hint(exp["header"], mine, [r for r in got if r[0] in keys])
+                else:  # no row key in common (e.g. names written instead of codes): say so first
+                    problems = [x for x in problems if "not written out" not in x]
+                    hint = hand_hint(exp["header"], mine, got)
                 rep.add("FAIL", f"{cq}: your answer differs from {layers}\n"
                         + "".join(f"      {x}\n" for x in problems) + hint)
             else:

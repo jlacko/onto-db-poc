@@ -496,6 +496,17 @@ list). Three negative tests for areas were added (centre out of range, shared
 centre, missing municipality); the sample CSVs gained area and municipality
 columns and `sample-areas.csv`.
 
+**Iteration 3.** No new sample individuals: the records already sit in five
+municipalities across four kraje, and the higher units come from the full
+reference data. `sample-records.csv` gained ORP area, okres and kraj (code and
+name). Queries for CQ24–CQ29 follow the okres branch to the kraj in both layers
+(the kraj rule makes the ORP branch equivalent). CQ27–CQ29 pass from reference
+data; CQ24–CQ26 wait for the expert's hand answers, both layers already agreeing.
+One negative test was added in Step 7 (a municipality whose branches disagree).
+With 6,555 territorial units in the reference data, a full validation run now
+takes about 80 seconds, spread over the reasoner, SHACL, the CQs and the loader
+tests.
+
 ## Step 9: Validation loop (S; run after every change)
 
 ```bash

@@ -1,0 +1,6 @@
+# CQ26 Records per okres of Moravskoslezsky kraj (3140), every okres of the kraj (0 where none).
+SELECT ?okres (COUNT(?r) AS ?records) WHERE {
+  ?o a krim:Okres ; skos:notation ?okres ; krim:inKraj/skos:notation 3140 .
+  OPTIONAL { ?m krim:inOkres ?o . ?a krim:inMunicipality ?m .
+             ?r a krim:OffenceRecord ; krim:inAnonymisationArea ?a }
+} GROUP BY ?okres

@@ -1,0 +1,9 @@
+# CQ25 Clearance rate per kraj; states 3 and 4 excluded; kraje with no remaining records omitted.
+SELECT ?kraj (COUNT(DISTINCT ?r) AS ?records) (COUNT(DISTINCT ?c) AS ?cleared)
+       (COUNT(DISTINCT ?c) / COUNT(DISTINCT ?r) AS ?rate) WHERE {
+  ?r a krim:OffenceRecord ; krim:inAnonymisationArea ?a ; krim:hasClearanceState ?s .
+  ?a krim:inMunicipality/krim:inOkres/krim:inKraj ?k .
+  ?k skos:notation ?kraj .
+  FILTER(?s NOT IN (kstate:3, kstate:4))
+  BIND(IF(?s = kstate:1, ?r, 1/0) AS ?c)   # error -> unbound when not cleared
+} GROUP BY ?kraj

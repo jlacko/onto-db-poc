@@ -1,0 +1,6 @@
+# CQ24 Records per kraj, every kraj (0 where none); a record counts in the kraj of its municipality's okres.
+SELECT ?kraj (COUNT(?r) AS ?records) WHERE {
+  ?k a krim:Kraj ; skos:notation ?kraj .
+  OPTIONAL { ?m krim:inOkres/krim:inKraj ?k . ?a krim:inMunicipality ?m .
+             ?r a krim:OffenceRecord ; krim:inAnonymisationArea ?a }
+} GROUP BY ?kraj
