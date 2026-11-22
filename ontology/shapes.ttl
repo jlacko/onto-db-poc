@@ -17,7 +17,7 @@
 <https://example.org/kriminalita/shapes>
     a owl:Ontology ;
     owl:imports <https://example.org/kriminalita/ontology> ;
-    owl:versionInfo "0.1.0" .
+    owl:versionInfo "0.2.0" .
 
 # ---------------------------------------------------------------------
 # Mapping vocabulary
@@ -29,6 +29,8 @@ kdb:primaryKey   a owl:AnnotationProperty ; rdfs:comment "true if the column is 
 kdb:linkTable    a owl:AnnotationProperty ; rdfs:comment "Many-valued property stored in a separate link table of this name." .
 kdb:languageColumns a owl:AnnotationProperty ; rdfs:comment "One column per language tag, named <column>_<lang>." .
 kdb:sourceField  a owl:AnnotationProperty ; rdfs:comment "Field name in the publisher's CSV extract." .
+kdb:index        a owl:AnnotationProperty ; rdfs:comment "true if the column needs a secondary index (foreign-key columns get one without the hint)." .
+kdb:uniqueColumns a owl:AnnotationProperty ; rdfs:comment "List of column names that are unique together: a UNIQUE index, the database counterpart of a uniqueness rule." .
 
 # ---------------------------------------------------------------------
 # Offence record (operational data)
@@ -54,23 +56,14 @@ krim:OffenceRecordShape
         sh:name "report date and time"@en , "datum a čas oznámení"@cs ;
         sh:description "Every offence record has exactly one report date and time."@en , "Každý záznam o deliktu má právě jedno datum a čas oznámení."@cs ;
         sh:datatype xsd:dateTime ; sh:minCount 1 ; sh:maxCount 1 ;
-        kdb:column "report_datetime" ; kdb:sourceField "date" ; sh:order 2
+        kdb:column "report_datetime" ; kdb:sourceField "date" ; kdb:index true ; sh:order 2  # period questions
     ] ;
     sh:property [
-        sh:path krim:anonymisedLatitude ;
-        sh:name "anonymised latitude"@en , "anonymizovaná zeměpisná šířka"@cs ;
-        sh:description "Every offence record has exactly one anonymised latitude between -90 and 90 degrees."@en , "Každý záznam o deliktu má právě jednu anonymizovanou zeměpisnou šířku v rozsahu -90 až 90 stupňů."@cs ;
-        sh:datatype xsd:decimal ; sh:minCount 1 ; sh:maxCount 1 ;
-        sh:minInclusive -90 ; sh:maxInclusive 90 ;
-        kdb:column "latitude" ; kdb:sourceField "y" ; sh:order 3
-    ] ;
-    sh:property [
-        sh:path krim:anonymisedLongitude ;
-        sh:name "anonymised longitude"@en , "anonymizovaná zeměpisná délka"@cs ;
-        sh:description "Every offence record has exactly one anonymised longitude between -180 and 180 degrees."@en , "Každý záznam o deliktu má právě jednu anonymizovanou zeměpisnou délku v rozsahu -180 až 180 stupňů."@cs ;
-        sh:datatype xsd:decimal ; sh:minCount 1 ; sh:maxCount 1 ;
-        sh:minInclusive -180 ; sh:maxInclusive 180 ;
-        kdb:column "longitude" ; kdb:sourceField "x" ; sh:order 4
+        sh:path krim:inAnonymisationArea ;
+        sh:name "anonymisation area"@en , "anonymizační oblast"@cs ;
+        sh:description "Every offence record lies in exactly one anonymisation area, the one whose centre is its published point."@en , "Každý záznam o deliktu leží právě v jedné anonymizační oblasti, té, jejíž střed je jeho zveřejněným bodem."@cs ;
+        sh:class krim:AnonymisationArea ; sh:minCount 1 ; sh:maxCount 1 ;
+        kdb:column "area_id" ; kdb:sourceField "y, x" ; sh:order 3  # derived: the published point (y = latitude, x = longitude) is matched to an area's centre
     ] ;
     sh:property [
         sh:path krim:recordedByMunicipalPolice ;
@@ -126,22 +119,22 @@ krim:OffenceRecordIdentityShape
             }"""
     ] .
 
-# Domain rule kept separate so it can be a warning: anonymised points should
-# lie in the Czech Republic's bounding box unless the location is foreign or
-# erroneous. Not enforced by the database; reported by validation.
-krim:OffenceRecordInCzechiaShape
+# Domain rule kept separate so it can be a warning: area centres should lie in
+# the Czech Republic's bounding box. Not enforced by the database; reported by
+# validation.
+krim:AnonymisationAreaInCzechiaShape
     a sh:NodeShape ;
-    sh:targetClass krim:OffenceRecord ;
+    sh:targetClass krim:AnonymisationArea ;
     sh:severity sh:Warning ;
     sh:property [
-        sh:path krim:anonymisedLatitude ;
-        sh:description "An offence record's anonymised latitude should lie between 48.5 and 51.1 degrees north."@en , "Anonymizovaná zeměpisná šířka záznamu by měla ležet mezi 48,5° a 51,1° severní šířky."@cs ;
+        sh:path krim:centreLatitude ;
+        sh:description "An anonymisation area's centre should lie between 48.5 and 51.1 degrees north."@en , "Střed anonymizační oblasti by měl ležet mezi 48,5° a 51,1° severní šířky."@cs ;
         sh:severity sh:Warning ;  # severity is per shape: it is not inherited from the node shape
         sh:minInclusive 48.5 ; sh:maxInclusive 51.1
     ] ;
     sh:property [
-        sh:path krim:anonymisedLongitude ;
-        sh:description "An offence record's anonymised longitude should lie between 12.0 and 18.9 degrees east."@en , "Anonymizovaná zeměpisná délka záznamu by měla ležet mezi 12,0° a 18,9° východní délky."@cs ;
+        sh:path krim:centreLongitude ;
+        sh:description "An anonymisation area's centre should lie between 12.0 and 18.9 degrees east."@en , "Střed anonymizační oblasti by měl ležet mezi 12,0° a 18,9° východní délky."@cs ;
         sh:severity sh:Warning ;
         sh:minInclusive 12.0 ; sh:maxInclusive 18.9
     ] .
@@ -171,6 +164,69 @@ krim:OffenceTypeClosureShape
         [ sh:prefix "krim" ; sh:namespace "https://example.org/kriminalita/ontology#"^^xsd:anyURI ] ,
         [ sh:prefix "skos" ; sh:namespace "http://www.w3.org/2004/02/skos/core#"^^xsd:anyURI ] ,
         [ sh:prefix "dcterms" ; sh:namespace "http://purl.org/dc/terms/"^^xsd:anyURI ] .
+
+# ---------------------------------------------------------------------
+# Anonymisation area (reference data, kept in the database, not in Turtle)
+# ---------------------------------------------------------------------
+krim:AnonymisationAreaShape
+    a sh:NodeShape ;
+    sh:targetClass krim:AnonymisationArea ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    kdb:table "anonymisation_area" ;
+    kdb:iriColumn "iri" ;
+    kdb:uniqueColumns ( "centre_latitude" "centre_longitude" ) ;  # no two areas share a centre (see AnonymisationAreaCentreShape)
+    sh:property [
+        sh:path dcterms:identifier ;
+        sh:name "area id"@en , "identifikátor oblasti"@cs ;
+        skos:definition "The publisher's integer identifier of an anonymisation area in its list of areas."@en ;  # local data-element definition: the path is a generic reused property
+        sh:description "Every anonymisation area has exactly one integer identifier assigned by the publisher."@en , "Každá anonymizační oblast má právě jeden celočíselný identifikátor přidělený vydavatelem."@cs ;
+        sh:datatype xsd:integer ; sh:minCount 1 ; sh:maxCount 1 ;
+        kdb:column "id" ; kdb:primaryKey true ; kdb:sourceField "id" ; sh:order 1
+    ] ;
+    sh:property [
+        sh:path krim:centreLatitude ;
+        sh:name "centre latitude"@en , "zeměpisná šířka středu"@cs ;
+        sh:description "Every anonymisation area has exactly one centre latitude between -90 and 90 degrees."@en , "Každá anonymizační oblast má právě jednu zeměpisnou šířku středu v rozsahu -90 až 90 stupňů."@cs ;
+        sh:datatype xsd:decimal ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:minInclusive -90 ; sh:maxInclusive 90 ;
+        kdb:column "centre_latitude" ; kdb:sourceField "def_bod_y" ; sh:order 2
+    ] ;
+    sh:property [
+        sh:path krim:centreLongitude ;
+        sh:name "centre longitude"@en , "zeměpisná délka středu"@cs ;
+        sh:description "Every anonymisation area has exactly one centre longitude between -180 and 180 degrees."@en , "Každá anonymizační oblast má právě jednu zeměpisnou délku středu v rozsahu -180 až 180 stupňů."@cs ;
+        sh:datatype xsd:decimal ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:minInclusive -180 ; sh:maxInclusive 180 ;
+        kdb:column "centre_longitude" ; kdb:sourceField "def_bod_x" ; sh:order 3
+    ] ;
+    sh:property [
+        sh:path krim:inMunicipality ;
+        sh:name "municipality"@en , "obec"@cs ;
+        sh:description "Every anonymisation area lies in exactly one municipality."@en , "Každá anonymizační oblast leží právě v jedné obci."@cs ;
+        sh:class krim:Municipality ; sh:minCount 1 ; sh:maxCount 1 ;
+        kdb:column "municipality_code" ; kdb:sourceField "kod_obec" ; sh:order 4
+    ] .
+
+# No two areas share a centre: the centre identifies the area a published
+# point belongs to. SHACL Core cannot compare focus nodes, so SPARQL; the
+# database counterpart is the UNIQUE index from kdb:uniqueColumns on the area shape.
+krim:AnonymisationAreaCentreShape
+    a sh:NodeShape ;
+    sh:targetClass krim:AnonymisationArea ;
+    sh:sparql [
+        sh:message "Two anonymisation areas must not share a centre."@en ,
+            "Dvě anonymizační oblasti nesmějí mít stejný střed."@cs ;
+        sh:prefixes <https://example.org/kriminalita/shapes> ;
+        sh:select """
+            SELECT $this ?value ?path WHERE {
+                $this krim:centreLatitude ?lat ; krim:centreLongitude ?lon .
+                ?other krim:centreLatitude ?lat ; krim:centreLongitude ?lon ; a krim:AnonymisationArea .
+                FILTER (?other != $this)
+                BIND (?other AS ?value)
+                BIND (krim:centreLatitude AS ?path)
+            }"""
+    ] .
 
 # ---------------------------------------------------------------------
 # Codelist concepts (reference data)
@@ -248,4 +304,39 @@ krim:LocationRelevanceShape
         sh:path skos:definition ;
         sh:description "Every location relevance has an English definition."@en ;
         sh:minCount 1
+    ] .
+
+# Municipalities (ČSÚ codelist 43) do not use krim:CodeConceptShape: there is
+# no linked-data IRI to match (RÚIAN's IRIs serve no RDF), so they have their
+# own rules: a code and a Czech name; the military training areas also carry a
+# definition.
+krim:MunicipalityShape
+    a sh:NodeShape ;
+    sh:targetClass krim:Municipality ;
+    kdb:table "municipality" ;
+    kdb:iriColumn "iri" ;
+    sh:property [
+        sh:path skos:notation ;
+        sh:name "municipality code"@en , "kód obce"@cs ;
+        skos:definition "The six-digit code of a municipality in ČSÚ codelist 43 (the same code is used in RÚIAN)."@en ;  # local data-element definition: the path is a generic reused property
+        sh:description "Every municipality has exactly one integer code from ČSÚ codelist 43."@en , "Každá obec má právě jeden celočíselný kód z číselníku ČSÚ 43."@cs ;
+        sh:datatype xsd:integer ; sh:minCount 1 ; sh:maxCount 1 ;
+        kdb:column "code" ; kdb:primaryKey true ; sh:order 1
+    ] ;
+    sh:property [
+        sh:path skos:prefLabel ;
+        sh:name "municipality name"@en , "název obce"@cs ;
+        skos:definition "The official Czech name of a municipality as listed in ČSÚ codelist 43."@en ;  # local data-element definition: the path is a generic reused property
+        sh:description "Every municipality has exactly one Czech name; names are not unique."@en , "Každá obec má právě jeden český název; názvy se mohou opakovat."@cs ;
+        sh:datatype rdf:langString ; sh:languageIn ( "cs" ) ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:qualifiedValueShape [ sh:languageIn ( "cs" ) ] ; sh:qualifiedMinCount 1 ;  # makes the column NOT NULL
+        kdb:column "name" ; kdb:languageColumns ( "cs" ) ; sh:order 2
+    ] ;
+    sh:property [
+        sh:path skos:definition ;
+        sh:name "definition"@en , "definice"@cs ;
+        skos:definition "An English note on a municipality; present only where it needs one (the military training areas)."@en ;  # local data-element definition: the path is a generic reused property
+        sh:description "A municipality has at most one English definition."@en , "Obec má nejvýše jednu anglickou definici."@cs ;
+        sh:datatype rdf:langString ; sh:languageIn ( "en" ) ; sh:maxCount 1 ;
+        kdb:column "definition_en" ; sh:order 3
     ] .

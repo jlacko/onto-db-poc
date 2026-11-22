@@ -12,9 +12,16 @@ Model (see ontology/competency-questions.md, CQ11, CQ18, CQ19):
     download files are pagination, recorded only in the technical table
     source_file for incremental refresh.
 
+  * the published point (fields y, x) is not stored on the record: it is the
+    centre of one of the publisher's anonymisation areas, and the record keeps
+    that area. A point that is no area's centre is reported and the record is
+    skipped, never placed in the nearest area (CQ23, concepts.md S6).
+
 Steps:
-  1. create build/kriminalita.sqlite from db/schema.sql; fill codelist tables from
-     the ontology's SKOS files; refresh metadata (release, data dictionary)
+  1. create build/kriminalita.sqlite from db/schema.sql; fill codelist tables
+     (incl. municipalities) from the ontology's SKOS files; load the anonymisation
+     areas from the publisher's polygon list (cached in build/cache, downloaded
+     once); refresh metadata (release, data dictionary)
   2. read every download file that can hold records of the year; downloads are
      cached in build/cache/zips and fetched again only if the publisher has a newer
      version AND the cached copy is older than --max-age-days (default 7);
@@ -35,7 +42,7 @@ import zipfile
 from datetime import datetime
 
 from rdflib import RDF, Literal, URIRef
-from rdflib.namespace import XSD
+from rdflib.namespace import DCTERMS, XSD
 
 import rdf2sql
 from common import API, BUILD, CACHE, DB_DIR, KRIM, ONTO, load_graph, model_files
@@ -43,7 +50,10 @@ from shapes_model import read_model
 
 DB = BUILD / "kriminalita.sqlite"
 REC = "https://example.org/kriminalita/record/"
+AREA = "https://example.org/kriminalita/area/"
 CODE = "https://example.org/kriminalita/code/"
+AREAS_URL = "https://kriminalita.policie.gov.cz/voronoi.geojson.zip"
+MICRO = 1_000_000  # published points have six decimals: match on integer micro-degrees
 
 
 # --------------------------------------------------------------------------- I/O
@@ -73,24 +83,78 @@ def norm_datetime(v: str) -> str:
     return datetime.fromisoformat(v).isoformat()
 
 
+# ------------------------------------------------------------------------- areas
+def read_areas(offline: bool = False) -> list[dict]:
+    """The publisher's anonymisation areas, from the polygon list (downloaded once, then cached).
+
+    The list is a fixed file (dated 2022), so a cached copy is always reused; delete
+    it to fetch again. Columns and source fields come from the area shape.
+    """
+    path = CACHE / "voronoi.geojson.zip"
+    if not path.exists():
+        if offline:
+            raise SystemExit("--offline: voronoi.geojson.zip is not cached")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(http_get(AREAS_URL))
+        path.with_suffix(".zip.updated").write_text(datetime.now().astimezone().isoformat(timespec="seconds") + "\n")
+    with zipfile.ZipFile(path) as z:
+        features = json.loads(z.read("voronoi.geojson"))["features"]
+    t = read_model()["anonymisation_area"]
+    out = []
+    for f in features:
+        props = f["properties"]
+        row = {c.name: props[c.source_field] for c in t.columns}
+        row["iri"] = AREA + str(row["id"])
+        out.append(row)
+    return out
+
+
+def load_areas(con, areas: list[dict]):
+    t = read_model()["anonymisation_area"]
+    cols = ["iri"] + [c.name for c in t.columns]
+    con.executemany(f"INSERT INTO anonymisation_area ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",
+                    ([a[c] for c in cols] for a in areas))
+
+
+def area_index(con) -> dict:
+    """(latitude, longitude) in micro-degrees -> area id."""
+    return {(round(lat * MICRO), round(lon * MICRO)): i
+            for i, lat, lon in con.execute("SELECT id, centre_latitude, centre_longitude FROM anonymisation_area")}
+
+
+def match_area(index: dict, lat: float, lon: float) -> int | None:
+    """The area whose centre is the published point. The publisher rounds to six decimals,
+    so a centre may differ by one micro-degree; anything farther is no match."""
+    key = (round(lat * MICRO), round(lon * MICRO))
+    if key in index:
+        return index[key]
+    near = {index[(key[0] + a, key[1] + b)] for a in (-1, 0, 1) for b in (-1, 0, 1) if (key[0] + a, key[1] + b) in index}
+    return near.pop() if len(near) == 1 else None
+
+
 # ---------------------------------------------------------------------- database
-def create_db(path) -> sqlite3.Connection:
+def create_db(path, areas: list[dict] | None = None, offline: bool = False) -> sqlite3.Connection:
+    """New database: schema, codelists from the ontology, areas from the polygon list
+    (or the given areas, for tests)."""
     con = sqlite3.connect(path)
     con.execute("PRAGMA foreign_keys = ON")
     con.executescript((DB_DIR / "schema.sql").read_text(encoding="utf-8"))
     con.execute("PRAGMA defer_foreign_keys = ON")
-    rdf2sql.load(load_graph(*model_files()), con, only={"offence_type", "clearance_state", "location_relevance"})
+    rdf2sql.load(load_graph(*model_files()), con,
+                 only={"offence_type", "clearance_state", "location_relevance", "municipality"})
+    load_areas(con, read_areas(offline) if areas is None else areas)
     con.commit()
     return con
 
 
-def open_db(rebuild: bool) -> sqlite3.Connection:
+def open_db(rebuild: bool, offline: bool = False) -> sqlite3.Connection:
     BUILD.mkdir(exist_ok=True)
     if rebuild and DB.exists():
         DB.unlink()
     if not DB.exists():
-        con = create_db(DB)
-        print(f"created {DB.relative_to(BUILD.parent)}; codelists filled from the ontology")
+        con = create_db(DB, offline=offline)
+        n = con.execute("SELECT COUNT(*) FROM anonymisation_area").fetchone()[0]
+        print(f"created {DB.relative_to(BUILD.parent)}; codelists filled from the ontology, {n} areas loaded")
         return con
     con = sqlite3.connect(DB)
     con.execute("PRAGMA foreign_keys = ON")
@@ -112,11 +176,12 @@ def refresh_metadata(con):
 
 # ------------------------------------------------------------------------- merge
 def field_map():
-    """CSV field -> (column, converter), from kdb:sourceField in the shapes; plus the link field."""
+    """CSV field -> (column, converter), from kdb:sourceField in the shapes; plus the link field.
+    The area is derived from two fields (y, x) and is matched in parse()."""
     t = read_model()["offence_record"]
     m = {}
     for c in t.columns:
-        if not c.source_field:
+        if not c.source_field or c.references == "anonymisation_area":
             continue
         if c.name == "municipal_police":
             m[c.source_field] = (c.name, lambda v: 1 if v.strip().lower() == "true" else 0)
@@ -131,12 +196,17 @@ def parse(csv_text: str, observed: str, year: int, known: dict) -> tuple[dict, s
     """One download file -> records of the year (one per id) and their type links."""
     fmap, link_field = field_map()
     records, types = {}, set()
-    st = {"rows": 0, "outside_year": 0, "unknown_code": 0, "inconsistent": 0}
+    st = {"rows": 0, "outside_year": 0, "unknown_code": 0, "inconsistent": 0, "no_area": 0}
+    no_area = set()
     for row in csv.DictReader(io.StringIO(csv_text)):
         st["rows"] += 1
         rec = {col: fn(row[src]) for src, (col, fn) in fmap.items()}
         if int(rec["report_datetime"][:4]) != year:
             st["outside_year"] += 1
+            continue
+        rec["area_id"] = match_area(known["area"], float(row["y"]), float(row["x"]))
+        if rec["area_id"] is None:  # reported, never placed in the nearest area
+            no_area.add(rec["id"])
             continue
         t = int(row[link_field])
         if (rec["clearance_state_code"] not in known["state"] or t not in known["type"]
@@ -149,6 +219,7 @@ def parse(csv_text: str, observed: str, year: int, known: dict) -> tuple[dict, s
             st["inconsistent"] += 1  # same id, different attributes within one file
         records[rec["id"]] = rec
         types.add((rec["id"], t))
+    st["no_area"] = len(no_area)
     return records, types, st
 
 
@@ -189,6 +260,7 @@ def known_codes(con) -> dict:
         "type": {r[0] for r in con.execute("SELECT code FROM offence_type")},
         "state": {r[0] for r in con.execute("SELECT code FROM clearance_state")},
         "relevance": {r[0] for r in con.execute("SELECT code FROM location_relevance")},
+        "area": area_index(con),
     }
 
 
@@ -238,8 +310,9 @@ def load_file(con, name: str, updated: str, year: int, known: dict,
     print(f"  file {name} ({'downloaded' if downloaded else 'cache'}, as of {observed}): "
           f"{len(records):>7} records | new {m['new']:>7}, updated {m['updated']:>6} "
           f"(state changed {m['state_changes']}), older observation ignored {m['superseded']} | "
-          f"outside {year}: {st['outside_year']}, unknown code: {st['unknown_code']}")
-    m["downloaded"] = downloaded
+          f"outside {year}: {st['outside_year']}, unknown code: {st['unknown_code']}, "
+          f"point is no area's centre: {st['no_area']}")
+    m["downloaded"], m["no_area"] = downloaded, st["no_area"]
     if st["inconsistent"]:
         print(f"    WARNING: {st['inconsistent']} rows repeat a record id with different attributes")
     return m
@@ -262,8 +335,14 @@ def quality_report(con, year: int):
             """SELECT COUNT(*) FROM offence_record r JOIN source_file f
                  ON f.name = substr(r.report_datetime, 1, 4) || substr(r.report_datetime, 6, 2)
                WHERE r.state_as_of < f.publisher_updated""",
-        "records outside the Czechia box (warning shape)":
-            "SELECT COUNT(*) FROM offence_record WHERE latitude NOT BETWEEN 48.5 AND 51.1 OR longitude NOT BETWEEN 12.0 AND 18.9",
+        "anonymisation areas with a centre outside the Czechia box (warning shape)":
+            "SELECT COUNT(*) FROM anonymisation_area WHERE centre_latitude NOT BETWEEN 48.5 AND 51.1 "
+            "OR centre_longitude NOT BETWEEN 12.0 AND 18.9",
+        "anonymisation areas holding no record (allowed; concepts.md S6)":
+            "SELECT COUNT(*) FROM anonymisation_area a WHERE NOT EXISTS "
+            "(SELECT 1 FROM offence_record r WHERE r.area_id = a.id)",
+        "records whose area is unknown (CQ23; must be 0)":
+            "SELECT COUNT(*) FROM offence_record r LEFT JOIN anonymisation_area a ON a.id = r.area_id WHERE a.id IS NULL",
         "records missing a broader type of one of their types (warning shape)":
             """SELECT COUNT(DISTINCT rt.offence_record_id) FROM offence_record_type rt
                JOIN offence_type t ON t.code = rt.offence_type_code
@@ -290,13 +369,13 @@ def shacl_sample(con, n: int):
     g = load_graph(*model_files())
     t = read_model()["offence_record"]
     q = ",".join("?" * len(ids))
-    slug = {"clearance_state": "state", "location_relevance": "relevance"}
+    slug = {"clearance_state": f"{CODE}state/", "location_relevance": f"{CODE}relevance/", "anonymisation_area": AREA}
     for row in con.execute(f"SELECT iri, {', '.join(c.name for c in t.columns)} FROM offence_record WHERE id IN ({q})", ids):
         s = URIRef(row[0])
         g.add((s, RDF.type, KRIM.OffenceRecord))
         for c, v in zip(t.columns, row[1:]):
             if c.references:
-                g.add((s, c.path, URIRef(f"{CODE}{slug[c.references]}/{v}")))
+                g.add((s, c.path, URIRef(f"{slug[c.references]}{v}")))
             elif c.name == "municipal_police":
                 g.add((s, c.path, Literal(bool(v))))
             elif c.name in ("report_datetime", "state_as_of"):
@@ -308,6 +387,16 @@ def shacl_sample(con, n: int):
     for rid, code in con.execute(f"SELECT offence_record_id, offence_type_code FROM offence_record_type "
                                  f"WHERE offence_record_id IN ({q})", ids):
         g.add((URIRef(REC + str(rid)), KRIM.hasOffenceType, URIRef(f"{CODE}type/{code}")))
+    # the areas of the sampled records, so the area link and the area rules can be checked
+    for aid, lat, lon, mun in con.execute(
+            f"SELECT DISTINCT a.id, a.centre_latitude, a.centre_longitude, a.municipality_code FROM anonymisation_area a "
+            f"JOIN offence_record r ON r.area_id = a.id WHERE r.id IN ({q})", ids):
+        a = URIRef(AREA + str(aid))
+        g.add((a, RDF.type, KRIM.AnonymisationArea))
+        g.add((a, DCTERMS.identifier, Literal(aid)))
+        g.add((a, KRIM.centreLatitude, Literal(str(lat), datatype=XSD.decimal)))
+        g.add((a, KRIM.centreLongitude, Literal(str(lon), datatype=XSD.decimal)))
+        g.add((a, KRIM.inMunicipality, URIRef(f"{CODE}municipality/{mun}")))
     conforms, res, _ = validate(g, shacl_graph=load_graph(ONTO / "shapes.ttl"), advanced=True, allow_warnings=True)
     sev = {}
     for r in res.subjects(RDF.type, SH.ValidationResult):
@@ -330,7 +419,7 @@ def main():
     ap.add_argument("--offline", action="store_true", help="no network: cached listing and downloads only")
     a = ap.parse_args()
 
-    con = open_db(a.rebuild)
+    con = open_db(a.rebuild, a.offline)
     known = known_codes(con)
     started = datetime.now().replace(microsecond=0).isoformat()
     with con:

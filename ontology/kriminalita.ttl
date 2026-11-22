@@ -8,6 +8,7 @@
 @prefix prov:    <http://www.w3.org/ns/prov#> .
 @prefix geo:     <http://www.w3.org/2003/01/geo/wgs84_pos#> .
 @prefix vs:      <http://www.w3.org/2003/06/sw-vocab-status/ns#> .
+@prefix gsp:     <http://www.opengis.net/ont/geosparql#> .
 
 # =====================================================================
 # Ontology header
@@ -18,15 +19,26 @@
     dcterms:title "Kriminalita ontology"@en , "Ontologie kriminality"@cs ;
     dcterms:description """Concepts for offence records published by the Police of the
 Czech Republic at kriminalita.policie.gov.cz: the records themselves, their offence
-types, clearance states and location relevance, as one continuous history keyed by
+types, clearance states and location relevance, the anonymisation areas their
+published places stand for, and the municipalities those areas lie in, as one
+continuous history keyed by
 the record identifier (the publisher's monthly download files are pagination, not part
 of the model). Location data exist from about mid-2013. Built ontology-first as a proof of concept; the SQLite schema is
 generated from the SHACL shapes that accompany this module."""@en ;
-    owl:versionIRI <https://example.org/kriminalita/ontology/0.1.0> ;
-    owl:versionInfo "0.1.0" ;
-    dcterms:modified "2026-11-21T00:00:00"^^xsd:dateTime ;
+    owl:versionIRI <https://example.org/kriminalita/ontology/0.2.0> ;
+    owl:versionInfo "0.2.0" ;
+    owl:priorVersion <https://example.org/kriminalita/ontology/0.1.0> ;
+    dcterms:modified "2026-11-22T00:00:00"^^xsd:dateTime ;
     dcterms:source <https://kriminalita.policie.gov.cz/> ;
-    rdfs:comment """Release 0.1.0: initial draft. Placeholder namespace example.org. Before
+    rdfs:comment """Release 0.2.0: anonymisation areas and municipalities. A published location
+is the centre of one of the publisher's predefined anonymisation areas, so a record
+now lies in an area (krim:inAnonymisationArea), and an area in a municipality
+(krim:inMunicipality, ČSÚ codelist 43). krim:anonymisedLatitude and
+krim:anonymisedLongitude are deprecated, replaced by the area and its centre
+(krim:centreLatitude, krim:centreLongitude). A change of meaning: before 1.0 that
+is a minor version.
+
+Release 0.1.0: initial draft. Placeholder namespace example.org. Before
 release, the monthly extract (krim:MonthlyExtract, krim:referenceMonth, krim:publishedIn)
 was removed: the monthly files are the publisher's pagination, not a domain concept.
 krim:stateAsOf replaces it as the time axis of observation."""@en .
@@ -46,6 +58,8 @@ vs:term_status   a owl:AnnotationProperty .
 dcterms:title    a owl:AnnotationProperty .
 dcterms:description a owl:AnnotationProperty .
 dcterms:source   a owl:AnnotationProperty .
+dcterms:isReplacedBy a owl:AnnotationProperty .
+skos:closeMatch  a owl:AnnotationProperty .  # used on a class (krim:Municipality) only
 
 krim:businessDefinition
     a owl:AnnotationProperty ;
@@ -124,13 +138,52 @@ act."""@en ;
     skos:scopeNote "Přesnost polohy. Všechny zveřejněné polohy jsou anonymizované bez ohledu na relevanci."@cs ;
     vs:term_status "draft" .
 
+krim:AnonymisationArea
+    a owl:Class ;
+    rdfs:subClassOf gsp:Feature ;
+    rdfs:label "anonymisation area"@en , "anonymizační oblast"@cs ;
+    skos:altLabel "Voronoi polygon"@en , "Voroného polygon"@cs ;
+    skos:definition """An anonymisation area is a geographic feature, one of a fixed set
+of polygons defined by the publisher, to whose centre the location of every offence
+record falling inside it is moved before publication."""@en ;
+    skos:example "Area 29789 in Prague, with its centre at 50.0833 N, 14.6278 E."@en ;
+    skos:scopeNote """Not an administrative unit, and not the true place of an act. The
+publisher computed the areas once: municipalities were split into Voronoi polygons
+around K-means cluster centres of the 2018 data, and municipalities with fewer than 25
+offences in 2018 were left whole. The list is published as a fixed file (2022). An
+area exists whether or not any record falls in it."""@en ;
+    dcterms:source <https://kriminalita.policie.gov.cz/voronoi.geojson.zip> ;
+    krim:businessDefinition "Oblast, do jejíhož středu vydavatel posune místo každého skutku, který v ní leží, aby nebylo možné určit skutečné místo. Obce jsou na takové oblasti rozděleny podle počtu skutků; malé obce tvoří jedinou oblast."@cs ;
+    skos:example "Oblast 29789 v Praze se středem 50,0833° s. š., 14,6278° v. d."@cs ;
+    skos:scopeNote "Správní jednotka nebo skutečné místo skutku. Oblasti vydavatel vypočítal jednou z dat za rok 2018 a zveřejnil je jako pevný seznam; oblast existuje, i když v ní žádný skutek neleží."@cs ;
+    vs:term_status "draft" .
+
+krim:Municipality
+    a owl:Class ;
+    rdfs:subClassOf skos:Concept , gsp:Feature ;
+    rdfs:label "municipality"@en , "obec"@cs ;
+    skos:closeMatch <https://slovník.gov.cz/legislativní/sbírka/128/2000/pojem/obec> ;
+    skos:definition """A municipality is a territorial unit of the Czech Republic listed in
+the Czech Statistical Office's codelist of municipalities and military training areas
+(ČSÚ codelist 43) and identified by its six-digit code."""@en ;
+    skos:example "Pustá Polom (code 509736), divided into four anonymisation areas."@en ;
+    skos:scopeNote """Not a city district or a part of a municipality. Includes the four
+military training areas (Boletice, Březina, Hradiště, Libavá): they are not
+municipalities in law (Act 128/2000) and hold no elections, but they are treated as
+municipalities here. RÚIAN uses the same codes."""@en ;
+    dcterms:source <https://apl2.czso.cz/iSMS/cisdet.jsp?kodcis=43> ;
+    krim:businessDefinition "Obec podle číselníku obcí a vojenských újezdů Českého statistického úřadu (číselník 43), určená šestimístným kódem."@cs ;
+    skos:example "Pustá Polom (kód 509736), rozdělená na čtyři anonymizační oblasti."@cs ;
+    skos:scopeNote "Městská část nebo část obce. Patří sem i čtyři vojenské újezdy (Boletice, Březina, Hradiště, Libavá); podle zákona o obcích obcemi nejsou, zde se s nimi ale zachází jako s obcemi."@cs ;
+    vs:term_status "draft" .
+
 # Modest axioms the reasoner can check: records and codelist concepts are
 # different kinds of things, and the three codelists do not overlap.
 [] a owl:AllDisjointClasses ;
-    owl:members ( krim:OffenceRecord skos:Concept ) .
+    owl:members ( krim:OffenceRecord krim:AnonymisationArea skos:Concept ) .
 
 [] a owl:AllDisjointClasses ;
-    owl:members ( krim:OffenceType krim:ClearanceState krim:LocationRelevance ) .
+    owl:members ( krim:OffenceType krim:ClearanceState krim:LocationRelevance krim:Municipality ) .
 
 # =====================================================================
 # Object properties
@@ -153,6 +206,22 @@ krim:hasLocationRelevance
     a owl:ObjectProperty ;
     rdfs:label "has location relevance"@en , "má relevanci lokality"@cs ;
     skos:definition "A relation that states what the recorded location of an offence record stands for."@en ;
+    vs:term_status "draft" .
+
+krim:inAnonymisationArea
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf dcterms:spatial ;
+    rdfs:label "in anonymisation area"@en , "v anonymizační oblasti"@cs ;
+    skos:definition "A relation that places an offence record in the anonymisation area whose centre is published as the record's location."@en ;
+    skos:scopeNote "Derived by the loader: the published point is the centre of exactly one area. A point that is no area's centre is a data error and is reported, never placed in the nearest area."@en ;
+    vs:term_status "draft" .
+
+krim:inMunicipality
+    a owl:ObjectProperty ;
+    rdfs:subPropertyOf gsp:sfWithin ;
+    rdfs:label "in municipality"@en , "v obci"@cs ;
+    skos:definition "A relation that places an anonymisation area in the municipality whose territory contains it."@en ;
+    skos:scopeNote "Given by the publisher's list of areas (field kod_obec); every area lies in exactly one municipality."@en ;
     vs:term_status "draft" .
 
 # =====================================================================
@@ -192,7 +261,10 @@ longitude."""@en ;
     krim:businessDefinition "Zeměpisná šířka (WGS-84) středu anonymizační oblasti, do které skutečné místo skutku spadá."@cs ;
     skos:example "50,081 (oblast v centru Prahy)."@cs ;
     skos:scopeNote "Skutečné místo skutku. Obce jsou rozděleny na oblasti (Voroného polygony) a každá poloha je posunuta do středu své oblasti; malé obce tvoří jedinou oblast."@cs ;
-    vs:term_status "draft" .
+    owl:deprecated true ;
+    dcterms:isReplacedBy krim:inAnonymisationArea , krim:centreLatitude ;
+    skos:editorialNote "Deprecated in iteration 2: the published point belongs to the record's anonymisation area, not to the record. Use krim:inAnonymisationArea, then krim:centreLatitude of the area."@en ;
+    vs:term_status "archaic" .
 
 krim:anonymisedLongitude
     a owl:DatatypeProperty ;
@@ -204,7 +276,10 @@ centre of the anonymisation polygon into which the recorded location falls."""@e
     krim:businessDefinition "Zeměpisná délka (WGS-84) středu anonymizační oblasti, do které skutečné místo skutku spadá."@cs ;
     skos:example "14,421 (oblast v centru Prahy)."@cs ;
     skos:scopeNote "Skutečné místo skutku; viz anonymizovaná zeměpisná šířka. Pozor: popis API vydavatele zeměpisnou délku a šířku zaměňuje."@cs ;
-    vs:term_status "draft" .
+    owl:deprecated true ;
+    dcterms:isReplacedBy krim:inAnonymisationArea , krim:centreLongitude ;
+    skos:editorialNote "Deprecated in iteration 2: the published point belongs to the record's anonymisation area, not to the record. Use krim:inAnonymisationArea, then krim:centreLongitude of the area."@en ;
+    vs:term_status "archaic" .
 
 krim:recordedByMunicipalPolice
     a owl:DatatypeProperty ;
@@ -240,6 +315,36 @@ publisher's 'updated' timestamp of the download that last contained the record."
     skos:scopeNote "Datum oznámení. Uchovává se jen poslední známý stav, proto i míra objasněnosti platí jen k tomuto dni; nedávné skutky bývají ještě v šetření."@cs ;
     vs:term_status "draft" .
 
+krim:centreLatitude
+    a owl:DatatypeProperty ;
+    rdfs:subPropertyOf geo:lat ;
+    rdfs:label "centre latitude"@en , "zeměpisná šířka středu"@cs ;
+    skos:definition """A coordinate property that gives the WGS-84 latitude of the centre
+of an anonymisation area, the point published as the location of every offence record
+in the area."""@en ;
+    skos:example "50.0833 (area 29789 in Prague)."@en ;
+    skos:scopeNote """Not the geometric centroid of the polygon: the publisher's defining
+point (field def_bod_y), a K-means cluster centre, moved inside the municipality where
+needed."""@en ;
+    krim:businessDefinition "Zeměpisná šířka (WGS-84) středu anonymizační oblasti; právě tento bod se zveřejňuje jako místo všech skutků v oblasti."@cs ;
+    skos:example "50,0833 (oblast 29789 v Praze)."@cs ;
+    skos:scopeNote "Těžiště polygonu. Střed je středem shluku skutků, v případě potřeby posunutým dovnitř obce."@cs ;
+    vs:term_status "draft" .
+
+krim:centreLongitude
+    a owl:DatatypeProperty ;
+    rdfs:subPropertyOf geo:long ;
+    rdfs:label "centre longitude"@en , "zeměpisná délka středu"@cs ;
+    skos:definition """A coordinate property that gives the WGS-84 longitude of the centre
+of an anonymisation area, the point published as the location of every offence record
+in the area."""@en ;
+    skos:example "14.6278 (area 29789 in Prague)."@en ;
+    skos:scopeNote "Not the geometric centroid of the polygon; see krim:centreLatitude. The publisher's field def_bod_x."@en ;
+    krim:businessDefinition "Zeměpisná délka (WGS-84) středu anonymizační oblasti; právě tento bod se zveřejňuje jako místo všech skutků v oblasti."@cs ;
+    skos:example "14,6278 (oblast 29789 v Praze)."@cs ;
+    skos:scopeNote "Těžiště polygonu; viz zeměpisná šířka středu."@cs ;
+    vs:term_status "draft" .
+
 # Reused datatype properties, declared for OWL DL tooling.
 dcterms:identifier a owl:DatatypeProperty .
 prov:generatedAtTime a owl:DatatypeProperty .
@@ -252,6 +357,9 @@ skos:broader       a owl:ObjectProperty .
 skos:inScheme      a owl:ObjectProperty .
 skos:exactMatch    a owl:ObjectProperty .
 skos:topConceptOf  a owl:ObjectProperty .
+dcterms:spatial    a owl:ObjectProperty .
+gsp:sfWithin       a owl:ObjectProperty .
+gsp:Feature        a owl:Class .
 skos:Concept       a owl:Class .
 skos:ConceptScheme a owl:Class .
 prov:Entity        a owl:Class .

@@ -39,6 +39,7 @@ class Column:
     description: str = ""
     source_field: str | None = None
     is_iri: bool = False  # value is an IRI (stored as text)
+    index: bool = False  # kdb:index: a secondary index (foreign keys get one anyway)
     shape: object = None  # the SHACL property shape this column realises
 
 
@@ -62,6 +63,7 @@ class Table:
     iri_column: str | None
     columns: list[Column] = field(default_factory=list)
     links: list[LinkTable] = field(default_factory=list)
+    unique_keys: list[list[str]] = field(default_factory=list)  # kdb:uniqueColumns (column names)
 
     @property
     def pk(self) -> Column:
@@ -97,6 +99,8 @@ def read_model(g: Graph | None = None) -> dict[str, Table]:
     shapes = [s for s in g.subjects(KDB.table, None)]
     for s in shapes:
         t = Table(_str(g, s, KDB.table), s, g.value(s, SH.targetClass), _str(g, s, KDB.iriColumn))
+        for key in g.objects(s, KDB.uniqueColumns):
+            t.unique_keys.append([str(x) for x in Collection(g, key)])
         tables[t.name] = t
         class_to_table[t.target_class] = t.name
 
@@ -133,7 +137,7 @@ def read_model(g: Graph | None = None) -> dict[str, Table]:
 
             c = Column(col, path, not_null=min_count > 0,
                        primary_key=bool(g.value(ps, KDB.primaryKey)), description=desc, source_field=src,
-                       shape=ps)
+                       shape=ps, index=bool(g.value(ps, KDB["index"])))  # KDB.index would be str.index
             if target_cls is not None:
                 c.references = class_to_table[target_cls]
             elif g.value(ps, SH.nodeKind) == SH.IRI:

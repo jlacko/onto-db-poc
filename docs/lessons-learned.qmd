@@ -57,6 +57,14 @@ Six lessons stand out:
    definitions. Fixed here with names and local definitions on the shapes, and a
    completeness rule in the validation loop.
 
+A second iteration then changed the released model (version 0.1.0): a domain
+fact found after release, that every published location is the centre of one
+of a fixed list of anonymisation areas, turned a value on the record into a
+shared concept with its own municipality. The method absorbed it as a loop:
+concepts, questions, reuse, terms, a first real deprecation, shapes, tests and
+loader, each step checked by the validation loop. Its lessons are in the
+section *Iteration 2*.
+
 # Practice by practice
 
 Verdicts: **Confirmed** (worked as described), **Adapted** (worked with
@@ -173,6 +181,32 @@ expert has not seen the computed one. For questions marked for hand answering,
 failures now say only *where* the answer disagrees (missing columns, rows with
 no counterpart, which columns differ, row counts) and confirm the filled
 columns that agree; the values appear only with an explicit `--show-answers`.
+
+*Extension, added after release 0.1.0: concepts and how they relate, first.*
+The two largest corrections of the first version were structural: the monthly
+download file modelled as a concept, and the anonymised location modelled as a
+value on the record when it is a shared area (a fact found on the publisher's
+website after the release). The competency questions caught neither, because
+they ask for answers, not for what exists and how many. So the sequence now
+starts with a step the guide does not have: the relationships between key
+concepts written as sentences in domain language, each with both ends (*"an
+offence record has one or more offence types; an offence type covers any
+number of records"*), judged by the expert and traced to the shape that
+enforces it. In iteration 2 it did its job: the two new sentences were judged
+in minutes, they drove the new competency questions, and the validator tracked
+them from "true but not yet modelled" to "enforced".
+
+*Keep it short, or it stops being the expert's.* The LLM's first draft had 21
+statements; the expert's gut feeling was that this was bloated for a small
+problem, and it was. Most statements were about attributes (identifier,
+dates, flags), which duplicated the plain-language rules already on the shapes
+and which no domain expert has an opinion on; the inverse direction of a
+relationship was a statement of its own; rejected statements were kept as
+history; and data-quality findings were creeping in. Cut to relationships
+only, both ends in one sentence, current model only, it is seven sentences, a
+non-technical reader can judge them in a few minutes, and the validator checks
+the same structure. An LLM drafting a checklist tends to make it complete
+rather than short; the human has to ask what the checklist is *for*.
 
 ## Practice 2: An LLM-friendly source format (Adapted)
 
@@ -339,7 +373,7 @@ only) and a language split by audience.
   *not* enforced in the schema; the loader reports them instead.
 - **Data dictionary.** See section 4.
 
-## Part IV: Lifecycle (Partly tested)
+## Part IV: Lifecycle (Confirmed in part)
 
 `owl:versionIRI` and `owl:versionInfo` are set; the schema records the release
 it realises (`meta_release`). One lifecycle rule was exercised twice for real:
@@ -348,6 +382,11 @@ only because 0.1.0 was unreleased; after a release both would require
 deprecation (`owl:deprecated`, `dcterms:isReplacedBy`) and a major version.
 That point has now been reached: the first version is tagged `v0.1.0` as the
 baseline for iteration, so the deprecation rule applies to every later change.
+Iteration 2 exercised it for real: the record's coordinates were deprecated
+(`owl:deprecated`, `dcterms:isReplacedBy` the area and its centre), kept in the
+ontology and the dictionary's deprecated-terms appendix, and dropped from the
+business glossary; the change of meaning makes the next release 0.2.0 (before
+1.0, a minor version marks a breaking change).
 
 The guide's **two time axes** turned up inside the data as well. Records are
 republished as investigations progress, so each record has a *report time*
@@ -356,7 +395,8 @@ the publisher reported the state we hold). Keeping only the latest state is a
 deliberate simplification; it makes every clearance rate an "as of" figure,
 which the dictionary and CQ11 now state explicitly.
 
-Not yet tested: `owl:priorVersion`, release bundles, named graphs, effective
+Release 0.2.0 points back with `owl:priorVersion` (0.1.0), and the schema,
+dictionary and glossary carry the new release stamp. Not yet tested: release bundles, named graphs, effective
 dating of reference data.
 
 # Lessons on the data dictionary (a key output)
@@ -433,6 +473,62 @@ needs:
   a property touched the ontology, shapes, tests and queries in one pass;
   regenerating the DDL and rerunning the loop confirmed nothing else broke.
 
+# Iteration 2: changing a released model
+
+The trigger was a domain fact the first version had wrong: the anonymised
+location is not a point on the record but a reference to one of 39,927
+predefined areas (Voronoi polygons), each in one municipality. The fact was
+found by the domain expert on the publisher's website, not in the API
+documentation. Lessons, in the order they arose:
+
+1. **The method works as a loop, not only as a pass.** Every step of the
+   sequence was revisited (concepts, questions, reuse, skeleton, definitions,
+   reference data, shapes, tests, loader), and each step had an obvious place
+   to put its part of the change. The guide describes one pass from nothing;
+   iterating on a released model needs the same steps plus the lifecycle rules
+   of part IV.
+2. **Deprecate, never delete, has a real cost and a real value.** The record's
+   coordinates were deprecated, not removed: they point to their replacement
+   and stay interpretable for old data. The cost: deprecated terms must be kept
+   out of the business glossary (current terms only, decided by the expert)
+   and listed separately in the data dictionary, and a lint rule must check
+   that each names its replacement.
+3. **Reuse by definition, not by name.** GeoSPARQL's `hasCentroid` looked made
+   for an area's centre; its definition (the arithmetic mean of the geometry's
+   points) is not what the publisher publishes (a K-means cluster centre,
+   sometimes moved inside the municipality). Reusing it would have asserted
+   something false, quietly. The LLM caught this only because it read the
+   vocabulary's own file instead of answering from memory.
+4. **Check claims against the source, every time.** The publisher's readme,
+   the polygon list, ČSÚ codelist 43 and RÚIAN's public pages were each queried
+   before a statement went into the model: every 2025 point is an area's centre
+   (within one micro-degree); every area's municipality is in codelist 43, one
+   to one; exactly four codelist items are military training areas. The
+   expert's memory was right in each case; the checks made it evidence.
+5. **Domain knowledge settles what data cannot.** Codelist 43 is "municipality
+   and military training area". Whether the four training areas count as
+   municipalities is not in any file; the expert decided (yes, for this proof
+   of concept) and named them. The model records the decision as a close, not
+   exact, match to the legal term.
+6. **Hand answers passed first time.** Both new hand-answered questions (CQ17,
+   CQ20) matched the queries on the first try, against ten disagreements in
+   iteration 1. The questions were sharper (each with a hint naming the
+   column to use) and the sample tables were made for answering by hand.
+7. **A knowingly failing commit is fine when it is named.** Changing the record
+   shape broke the sample data, the sample load and the CQ tests until the
+   sample was rewritten. The expert chose to commit the shapes on their own,
+   with the expected failures stated in the commit message, rather than fold
+   two steps into one. The validator was changed so that a crashed section is
+   a failure, not an abort, which matters exactly in such a state.
+8. **Generated schemas need designed performance.** The schema generated from
+   the shapes was correct but had no index on the new foreign key; the first
+   quality check on 1.38 million records ran for over ten minutes before it was
+   stopped. The fix was a rule (every foreign-key column is indexed) plus two
+   mapping hints (`kdb:index`, `kdb:uniqueColumns`), so the whole schema again
+   comes from the shapes. A full rebuild now takes under two minutes. Asked
+   whether to parallelise the load, the answer was no: the time was in one
+   query, not in a busy core.
+
 # Recommendations for the next version of the guide
 
 1. Add **negative tests** to practice 5: every check must be shown to fail.
@@ -451,3 +547,15 @@ needs:
    data, not only to the ontology release.
 7. Recommend **drift checks** for every generated artifact (DDL, dictionary,
    glossary), run inside the validation loop.
+8. Consider a step **before** the competency questions: **concepts and
+   cardinality as plain sentences**, judged by the expert and traced to the
+   shapes. It asks the structural questions (what exists, how many, shared or
+   not) that competency questions miss.
+9. In practice 4, say **reuse by definition, not by name**, and ask the LLM to
+   read the vocabulary's own file before proposing a term.
+10. In part III, add **physical design** to the bridge from shapes to schema:
+    index every foreign-key column by rule, and give the modeller hints for the
+    rest. A correct generated schema can still be unusable at real volume.
+11. In part IV, describe **iterating on a released model**: which steps to
+    revisit, deprecation in every generated artifact, and when a commit may
+    knowingly fail.

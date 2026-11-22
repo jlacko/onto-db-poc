@@ -1,0 +1,8 @@
+# CQ22 Code and Czech name of the municipality of record 1001.
+SELECT ?record ?municipality (STR(?label) AS ?name) WHERE {
+  ?r dcterms:identifier ?record ; krim:inAnonymisationArea ?a .
+  FILTER(?record = 1001)
+  ?a krim:inMunicipality ?m .
+  ?m skos:notation ?municipality ; skos:prefLabel ?label .
+  FILTER(LANG(?label) = "cs")
+}

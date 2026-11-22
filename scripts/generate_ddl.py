@@ -90,8 +90,15 @@ def generate() -> str:
                 out.append("")
 
     out.extend(link_out)
-    out.append("-- Index for period questions (the history is continuous over report time)")
-    out.append("CREATE INDEX offence_record_report ON offence_record(report_datetime);")
+    # Indexes: every foreign-key column (SQLite does not index them itself), every column with a
+    # kdb:index hint, and every kdb:uniqueColumns key (the database counterpart of a uniqueness rule).
+    out.append("-- Indexes: foreign keys, kdb:index hints, kdb:uniqueColumns keys")
+    for t in table_order(tables):
+        for c in t.columns:
+            if not c.primary_key and (c.references or c.index):
+                out.append(f"CREATE INDEX {t.name}_{c.name} ON {t.name}({c.name});")
+        for key in t.unique_keys:
+            out.append(f"CREATE UNIQUE INDEX {t.name}_{'_'.join(key)} ON {t.name}({', '.join(key)});")
     out.append("")
     out.append("-- Technical tables: loader bookkeeping, not part of the domain model (scripts/dictionary.py)")
     for tname, (desc, cols) in TECHNICAL_TABLES.items():

@@ -35,8 +35,9 @@ def build(text: str) -> str:
         if "```expected" not in body:
             answer, tested = "gap (not answerable)", "—"
         else:
-            answer = "domain expert ✍" if hand else "pre-filled"
-            tested = " + ".join(layers)
+            todo = "TODO" in body.split("```expected", 1)[1].split("```", 1)[0]
+            answer = ("domain expert ✍" if hand else "pre-filled") + (" (pending)" if todo else "")
+            tested = " + ".join(layers) or "not yet"
         letter = sec.split(".")[0] if "." in sec[:3] else sec
         out.append(f"| {cq} | {title} | {letter} | {answer} | {tested} |")
     secs = []

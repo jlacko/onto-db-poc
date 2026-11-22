@@ -6,14 +6,17 @@ Checks, in order:
   1. parse      all Turtle files parse
   2. reasoner   HermiT finds the ontology + reference + sample data consistent,
                 and finds a deliberately contradictory individual inconsistent
-  3. lint       labels, definitions, status, duplicates, undeclared terms, policy,
+  3. concepts   every sentence in ontology/concepts.md marked true is enforced
+                by the shape it names, with the same cardinality; no shape
+                enforces a sentence marked false
+  4. lint       labels, definitions, status, duplicates, undeclared terms, policy,
                 data-dictionary and Czech glossary completeness
-  4. shacl      sample data conforms; each negative test fails for the expected reason
-  5. artifacts  db/schema.sql, the data dictionary, the glossary and the sample table are up to
+  5. shacl      sample data conforms; each negative test fails for the expected reason
+  6. artifacts  db/schema.sql, the data dictionary, the glossary and the sample table are up to
                 date; the schema loads in SQLite
-  6. cq         every competency question: SPARQL vs SQL vs the expected answer
+  7. cq         every competency question: SPARQL vs SQL vs the expected answer
                 in ontology/competency-questions.md
-  7. loader     the same record observed twice (in either order) ends as one row
+  8. loader     the same record observed twice (in either order) ends as one row
                 in the latest state; reloads are idempotent
 
 Writes a readable report to build/validation-report.md. Exit code 1 on any failure.
@@ -30,7 +33,7 @@ from pathlib import Path
 
 from pyshacl import validate as shacl_validate
 from rdflib import RDF, RDFS, OWL, SKOS, Graph, Literal, URIRef
-from rdflib.namespace import SH
+from rdflib.namespace import DCTERMS, SH
 
 from common import BUILD, DB_DIR, KRIM, ONTO, REF, TESTS, VS, bind, load_graph, model_files
 
@@ -127,11 +130,147 @@ def check_reasoner(rep: Report):
 
 
 # ---------------------------------------------------------------------------
+STATEMENT_KEYS = ("subject", "path", "object", "count", "shape")
+VERDICTS = ("true", "false", "depends")
+
+
+def parse_statements() -> dict[str, dict]:
+    """{S1: {title, verdict, subject, path, ...}} from ontology/concepts.md: the
+    sentence is the heading, the verdict a line below it, the rest a validator block."""
+    text = (ONTO / "concepts.md").read_text(encoding="utf-8")
+    out = {}
+    parts = re.split(r"^### (S\d+): (.*)$", text, flags=re.M)
+    for sid, title, body in zip(parts[1::3], parts[2::3], parts[3::3]):
+        m = re.search(r"```validator\n(.*?)```", body, re.S)
+        v = re.search(r"^Verdict:\s*(\S+)", body, re.M)
+        st = {"title": title.strip(), "block": m is not None}
+        if v:
+            st["verdict"] = v.group(1)
+        for line in (m.group(1).splitlines() if m else []):
+            if ":" in line:
+                k, v = line.split(":", 1)
+                st[k.strip()] = v.strip()
+        out[sid] = st
+    return out
+
+
+def _prop_shapes(g: Graph, node) -> list:
+    """Property shapes of a node shape, including those reached through sh:node."""
+    out = list(g.objects(node, SH.property))
+    for n in g.objects(node, SH.node):
+        out += _prop_shapes(g, n)
+    return out
+
+
+def _path_matches(g: Graph, ps, path: str) -> bool:
+    p = g.value(ps, SH.path)
+    if path.startswith("^"):
+        return p is not None and g.value(p, SH.inversePath) == g.namespace_manager.expand_curie(path[1:])
+    return p == g.namespace_manager.expand_curie(path)
+
+
+def _counts(g: Graph, ps) -> str:
+    lo, hi = g.value(ps, SH.minCount), g.value(ps, SH.maxCount)
+    return f"{lo.toPython() if lo is not None else 0}..{hi.toPython() if hi is not None else '*'}"
+
+
+def check_concepts(rep: Report):
+    rep.section("3. Concepts and cardinality (statements vs shapes)")
+    g = load_graph(ONTO / "shapes.ttl")
+    g.bind("dcterms", "http://purl.org/dc/terms/")
+    g.bind("skos", str(SKOS))
+    g.bind("xsd", "http://www.w3.org/2001/XMLSchema#")
+    curie = g.namespace_manager.expand_curie
+    stmts = parse_statements()
+    if not stmts:
+        rep.add("FAIL", "no statements found in ontology/concepts.md")
+        return
+    enforced = set()
+    for sid, st in stmts.items():
+        label = f"{sid} {st['title'].rstrip('.')}"
+        missing = [k for k in STATEMENT_KEYS if k not in st]
+        if not st["block"] or missing:
+            rep.add("FAIL", f"{label}: validator block missing or incomplete (needs {', '.join(missing or STATEMENT_KEYS)})")
+            continue
+        if "verdict" not in st:
+            rep.add("FAIL", f"{label}: no 'Verdict:' line")
+            continue
+        verdict, shape, path, count = st["verdict"], st["shape"], st["path"], st["count"]
+        if not re.fullmatch(r"\d+\.\.(\d+|\*)", count):
+            rep.add("FAIL", f"{label}: count '{count}' is not min..max (e.g. 1..1, 0..*)")
+            continue
+        if verdict == "TODO":
+            rep.add("PENDING", f"{label}: awaiting your verdict")
+            continue
+        if verdict not in VERDICTS:
+            rep.add("FAIL", f"{label}: verdict '{verdict}' is not one of true, false, depends, TODO")
+            continue
+        if (shape == "none" or verdict == "depends") and not st.get("reason"):
+            rep.add("FAIL", f"{label}: needs a reason (shape: none or verdict: depends)")
+            continue
+        subject = curie(st["subject"])
+        # property shapes on node shapes that target the subject class, with this path
+        targeting = list(g.subjects(SH.targetClass, subject))
+        hits = [ps for n in targeting for ps in _prop_shapes(g, n)
+                if path != "—" and _path_matches(g, ps, path)]
+        if verdict == "depends":
+            rep.add("INFO", f"{label}: depends: {st['reason']}")
+        elif verdict == "false":
+            same = [ps for ps in hits if _counts(g, ps) == count]
+            if same:
+                rep.add("FAIL", f"{label}: marked false, but a shape enforces it ({path} {count})")
+            else:
+                rep.add("PASS", f"{label}: rejected, and no shape enforces it")
+        elif shape == "none":
+            if count.endswith("..*") and count.startswith("0"):
+                rep.add("PASS", f"{label}: open cardinality, nothing to enforce")
+            else:
+                rep.add("WARN", f"{label}: true but not enforced yet ({st['reason']})")
+        else:
+            node = curie(shape)
+            if (node, RDF.type, SH.NodeShape) not in g:
+                rep.add("FAIL", f"{label}: {shape} is not a node shape in shapes.ttl")
+                continue
+            if g.value(node, SH.targetClass) != subject:
+                rep.add("FAIL", f"{label}: {shape} does not target {st['subject']}")
+                continue
+            own = [ps for ps in _prop_shapes(g, node) if path != "—" and _path_matches(g, ps, path)]
+            if not own and (node, SH.sparql, None) in g:
+                rep.add("PASS", f"{label}: enforced by the SPARQL constraint in {shape} (existence checked)")
+                continue
+            if not own:
+                rep.add("FAIL", f"{label}: {shape} has no property shape for {path}")
+                continue
+            ps = own[0]
+            enforced.add(ps)
+            got = _counts(g, ps)
+            obj = g.value(ps, SH["class"]) or g.value(ps, SH.datatype)
+            if got != count:
+                rep.add("FAIL", f"{label}: the statement says {count}, {shape} enforces {got} on {path}")
+            elif obj is not None and st["object"] != "—" and obj != curie(st["object"]):
+                rep.add("FAIL", f"{label}: the statement says values are {st['object']}, "
+                                f"{shape} says {g.namespace_manager.normalizeUri(obj)}")
+            else:
+                rep.add("PASS", f"{label}: enforced by {shape} ({path} {count})")
+    # the other direction: cardinalities in shapes that no statement covers
+    uncovered = []
+    for n in g.subjects(SH.targetClass, None):
+        for ps in _prop_shapes(g, n):
+            if ps in enforced or (g.value(ps, SH.minCount) is None and g.value(ps, SH.maxCount) is None):
+                continue
+            uncovered.append(f"{g.namespace_manager.normalizeUri(n)} {g.namespace_manager.normalizeUri(g.value(ps, SH.path))} {_counts(g, ps)}")
+    if uncovered:
+        rep.add("INFO", f"{len(set(uncovered))} other cardinalities in the shapes (attributes, codelist "
+                        "fields) are stated as the shapes' own plain-language rules, not in concepts.md")
+
+
+# ---------------------------------------------------------------------------
 def check_lint(rep: Report):
-    rep.section("3. Lint (labels, definitions, duplicates, policy)")
+    rep.section("4. Lint (labels, definitions, duplicates, policy)")
     onto = load_graph(ONTO / "kriminalita.ttl")
     model = load_graph(*model_files())
     ns = str(KRIM)
+    shapes_graph = load_graph(ONTO / "shapes.ttl")
 
     terms = sorted({s for s in onto.subjects(RDF.type, None)
                     if isinstance(s, URIRef) and str(s).startswith(ns)})
@@ -149,6 +288,11 @@ def check_lint(rep: Report):
             rep.add("WARN", f"krim:{name} definition is not in genus-differentia form ('A ... is a ...')")
         if onto.value(t, VS.term_status) is None:
             rep.add("FAIL", f"krim:{name} has no vs:term_status"); problems += 1
+        if (t, OWL.deprecated, Literal(True)) in onto:
+            if onto.value(t, DCTERMS.isReplacedBy) is None:
+                rep.add("FAIL", f"krim:{name} is deprecated but names no replacement (dcterms:isReplacedBy)"); problems += 1
+            if (None, SH.path, t) in shapes_graph:
+                rep.add("WARN", f"krim:{name} is deprecated but the shapes still use it")
         if (t, RDFS.domain, None) in onto or (t, RDFS.range, None) in onto:
             rep.add("FAIL", f"krim:{name} uses rdfs:domain/range (policy: constraints belong in SHACL)"); problems += 1
         if onto.value(t, SKOS.editorialNote) is not None:
@@ -166,10 +310,19 @@ def check_lint(rep: Report):
             seen[key] = t.removeprefix(ns)
 
     # Codelist concepts: Czech label required; English expected; no duplicate labels among siblings.
+    # Municipalities are proper names: no English label, and many villages share a name (the code
+    # tells them apart), so they are checked for a Czech label only.
+    names = set(model.subjects(RDF.type, KRIM.Municipality))
     concepts = sorted(set(model.subjects(RDF.type, SKOS.Concept)))
     missing_cs = [c for c in concepts if not any(l.language == "cs" for l in model.objects(c, SKOS.prefLabel))]
-    missing_en = [c for c in concepts if not any(l.language == "en" for l in model.objects(c, SKOS.prefLabel))]
-    rep.add("FAIL" if missing_cs else "PASS", f"{len(concepts)} codelist concepts, {len(missing_cs)} without a Czech label")
+    missing_en = [c for c in concepts if c not in names
+                  and not any(l.language == "en" for l in model.objects(c, SKOS.prefLabel))]
+    if names:
+        shared = len(names) - len({str(model.value(c, SKOS.prefLabel)).lower() for c in names})
+        rep.add("INFO", f"{len(names)} municipalities (proper names, no English label expected); "
+                        f"{shared} share a name with another municipality and are told apart by code")
+    concepts = [c for c in concepts if c not in names]
+    rep.add("FAIL" if missing_cs else "PASS", f"{len(concepts) + len(names)} codelist concepts, {len(missing_cs)} without a Czech label")
     rep.add("WARN" if missing_en else "PASS", f"{len(missing_en)} codelist concepts without an English label")
     sib = {}
     dup_sib = 0
@@ -255,7 +408,7 @@ def _shacl(data: Graph):
 
 
 def check_shacl(rep: Report):
-    rep.section("4. SHACL (closed-world data rules)")
+    rep.section("5. SHACL (closed-world data rules)")
     data = load_graph(*model_files(), TESTS / "sample-data.ttl")
     conforms, rows = _shacl(data)
     violations = [r for r in rows if r["severity"] == SH.Violation]
@@ -264,17 +417,18 @@ def check_shacl(rep: Report):
             f"reference data + sample data: {len(violations)} violations")
     for v in violations:
         rep.add("FAIL", f"  {v['focus']} {v['path']}: {v['message']}")
-    expected_warn = {URIRef("https://example.org/kriminalita/record/1010")}
+    expected_warn = {URIRef("https://example.org/kriminalita/area/99001")}
     got_warn = {w["focus"] for w in warnings}
     rep.add("PASS" if got_warn == expected_warn else "FAIL",
-            f"warnings raised for {sorted(str(x).rsplit('/', 1)[1] for x in got_warn)} "
-            "(expected: record 1010, foreign location outside the Czechia box)")
+            f"warnings raised for {sorted(str(x).rsplit('/', 2)[1] + ' ' + str(x).rsplit('/', 1)[1] for x in got_warn)} "
+            "(expected: area 99001, a fictional test area outside the Czechia box)")
 
     # Negative tests: each individual in invalid-data.ttl must fail for the stated reason.
     text = (TESTS / "invalid-data.ttl").read_text(encoding="utf-8")
     expect = {}
+    prefixes = {"rec": "https://example.org/kriminalita/record/", "area": "https://example.org/kriminalita/area/"}
     for m in re.finditer(r"^(\w+):(\w+) a .*# expect: (\w+)", text, re.M):
-        prefix = {"rec": "https://example.org/kriminalita/record/"}[m.group(1)]
+        prefix = prefixes[m.group(1)]
         expect[URIRef(prefix + m.group(2))] = m.group(3)
     bad = load_graph(*model_files(), TESTS / "sample-data.ttl", TESTS / "invalid-data.ttl")
     _, rows = _shacl(bad)
@@ -285,8 +439,8 @@ def check_shacl(rep: Report):
                 f"negative test {str(node).rsplit('/', 1)[1]}: expected violation on {prop}"
                 + (f", got: {hit[0]['message'][:90]}" if hit else ", NOT reported"))
     # A rule between two nodes (e.g. a duplicate identifier) flags both; the comment names the partner.
-    partners = {URIRef("https://example.org/kriminalita/record/" + m.group(1))
-                for m in re.finditer(r"also flags rec:(\w+)", text)}
+    partners = {URIRef(prefixes[m.group(1)] + m.group(2))
+                for m in re.finditer(r"also flags (\w+):(\w+)", text)}
     unexpected = {r["focus"] for r in viol} - set(expect) - partners
     if unexpected:
         rep.add("FAIL", f"unexpected violations for {sorted(map(str, unexpected))}")
@@ -304,7 +458,7 @@ def build_sample_db() -> sqlite3.Connection:
 
 
 def check_ddl(rep: Report):
-    rep.section("5. Generated artifacts (DDL, data dictionary, glossary, sample table)")
+    rep.section("6. Generated artifacts (DDL, data dictionary, glossary, sample table)")
     import generate_ddl
     current = (DB_DIR / "schema.sql").read_text(encoding="utf-8") if (DB_DIR / "schema.sql").exists() else ""
     fresh = generate_ddl.generate()
@@ -464,7 +618,7 @@ def hand_hint(header: list[str], want: list[tuple], got: list[tuple]) -> str:
 
 
 def check_cq(rep: Report):
-    rep.section("6. Competency questions (you vs SPARQL vs SQL)")
+    rep.section("7. Competency questions (you vs SPARQL vs SQL)")
     spec = parse_cq_spec()
     g = load_graph(*model_files(), TESTS / "sample-data.ttl")
     con = build_sample_db()
@@ -474,6 +628,9 @@ def check_cq(rep: Report):
         rq, sq = cq_dir / f"{cq}.rq", cq_dir / f"{cq}.sql"
         if exp["expected"] is None and not exp.get("pending"):
             rep.add("INFO", f"{cq}: no expected block (gap or not testable)")
+            continue
+        if not rq.exists() and not sq.exists():
+            rep.add("PENDING", f"{cq}: no SPARQL or SQL query yet (written with the sample data, Step 8)")
             continue
         sparql = sql = None
         try:
@@ -510,19 +667,25 @@ def check_cq(rep: Report):
 
 # ---------------------------------------------------------------------------
 def check_loader(rep: Report):
-    rep.section("7. Loader: one occurrence = one record, latest state wins")
+    rep.section("8. Loader: one occurrence = one record, latest state wins")
     import load
     obs = TESTS / "observations"
     o1 = ((obs / "observation-1.csv").read_text(encoding="utf-8"), "2026-01-10T00:00:00")
     o2 = ((obs / "observation-2.csv").read_text(encoding="utf-8"), "2026-06-10T00:00:00")
 
+    # Four areas whose centres are the fixture points (the real list has 39,927).
+    areas = [{"iri": f"https://example.org/kriminalita/area/{i}", "id": i, "centre_latitude": lat,
+              "centre_longitude": lon, "municipality_code": m}
+             for i, lat, lon, m in ((1, 50.081, 14.421, 554782), (2, 49.195, 16.608, 582786),
+                                    (3, 49.835, 18.282, 554821), (4, 50.091, 14.401, 554782))]
+
     def run(sequence):
-        con = load.create_db(":memory:")
+        con = load.create_db(":memory:", areas=areas)
         known, stats = load.known_codes(con), []
         for text, observed in sequence:
-            records, types, _ = load.parse(text, observed, 2025, known)
+            records, types, st = load.parse(text, observed, 2025, known)
             with con:
-                stats.append(load.merge(con, records, types))
+                stats.append(load.merge(con, records, types) | {"no_area": st["no_area"]})
         return con, stats
 
     def final_state(con):
@@ -532,7 +695,7 @@ def check_loader(rep: Report):
             "SELECT offence_type_code FROM offence_record_type WHERE offence_record_id = 5001"))
         return ids, st, asof, types
 
-    want = ([5001, 5002, 5003], 1, "2026-06-10T00:00:00", [18, 20])
+    want = ([5001, 5002, 5003, 5005], 1, "2026-06-10T00:00:00", [18, 20])
     for label, seq in (("older then newer", [o1, o2]), ("newer then older", [o2, o1])):
         con, stats = run(seq)
         got = final_state(con)
@@ -545,10 +708,17 @@ def check_loader(rep: Report):
             f"5002 still added (new {stats[1]['new']})")
     con, stats = run([o1, o2, o2])
     n = con.execute("SELECT COUNT(*) FROM offence_record").fetchone()[0]
-    rep.add("PASS" if n == 3 and stats[2]["new"] == 0 else "FAIL",
+    rep.add("PASS" if n == 4 and stats[2]["new"] == 0 else "FAIL",
             f"reloading the same observation is idempotent ({n} records, {stats[2]['new']} new)")
     rep.add("PASS" if stats[1]["state_changes"] == 1 else "FAIL",
             f"state change detected for 5001 (unsolved -> cleared): {stats[1]['state_changes']}")
+    areas_of = dict(con.execute("SELECT id, area_id FROM offence_record"))
+    rep.add("PASS" if areas_of.get(5001) == 1 and areas_of.get(5005) == 3 else "FAIL",
+            f"points matched to area centres: 5001 -> {areas_of.get(5001)} (exact), "
+            f"5005 -> {areas_of.get(5005)} (one micro-degree off); expected 1 and 3")
+    rep.add("PASS" if stats[0]["no_area"] == 1 and 5004 not in areas_of else "FAIL",
+            f"a point that is no area's centre is skipped and counted, never placed nearby: "
+            f"{stats[0]['no_area']} skipped, 5004 {'absent' if 5004 not in areas_of else 'LOADED'}")
 
 
 # ---------------------------------------------------------------------------
@@ -557,12 +727,11 @@ def main():
     rep = Report()
     check_parse(rep)
     if not rep.failed:
-        check_reasoner(rep)
-        check_lint(rep)
-        check_shacl(rep)
-        check_ddl(rep)
-        check_cq(rep)
-        check_loader(rep)
+        for check in (check_reasoner, check_concepts, check_lint, check_shacl, check_ddl, check_cq, check_loader):
+            try:
+                check(rep)
+            except Exception as e:  # noqa: BLE001 - a crashed section is a failure, the others still run
+                rep.add("FAIL", f"section crashed: {type(e).__name__}: {e}")
     BUILD.mkdir(exist_ok=True)
     (BUILD / "validation-report.md").write_text(rep.markdown(), encoding="utf-8")
     print(f"\n{'FAILED' if rep.failed else 'PASSED'}. Report: build/validation-report.md")

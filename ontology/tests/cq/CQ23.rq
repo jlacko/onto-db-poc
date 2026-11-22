@@ -1,0 +1,5 @@
+# CQ23 Records that do not lie in a known anonymisation area (expected: none).
+SELECT ?record WHERE {
+  ?r a krim:OffenceRecord ; dcterms:identifier ?record .
+  FILTER NOT EXISTS { ?r krim:inAnonymisationArea ?a . ?a a krim:AnonymisationArea }
+}

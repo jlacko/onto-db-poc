@@ -5,6 +5,7 @@
 Writes (generated from ontology/tests/sample-data.ttl; do not edit):
   ontology/tests/sample-records.csv   one row per record
   ontology/tests/sample-types.csv     the offence types used, with broader type and category
+  ontology/tests/sample-areas.csv     the anonymisation areas, with municipality and centre
 UTF-8, comma-separated, dot as decimal separator. Multi-valued cells (a record's
 types and categories) are separated by spaces. The categories column was added at
 the domain expert's request; the most-specific type is still not pre-computed.
@@ -52,20 +53,24 @@ def render() -> dict:
     for r in recs:
         dt = str(g.value(r, KRIM.reportDateTime))
         st, rel = g.value(r, KRIM.hasClearanceState), g.value(r, KRIM.hasLocationRelevance)
+        a = g.value(r, KRIM.inAnonymisationArea)
+        m = g.value(a, KRIM.inMunicipality)
         types = sorted(g.objects(r, KRIM.hasOffenceType), key=lambda t: code(g, t))
         used |= set(types)
         cats = sorted({code(g, top_of(g, t)) for t in types})
         rows.append([
             str(g.value(r, DCTERMS.identifier)),
             dt[:10], dt[11:16], dt[:7],
-            str(g.value(r, KRIM.anonymisedLatitude)), str(g.value(r, KRIM.anonymisedLongitude)),
+            str(g.value(a, DCTERMS.identifier)), code(g, m), label(g, m, "cs"),
+            str(g.value(a, KRIM.centreLatitude)), str(g.value(a, KRIM.centreLongitude)),
             "yes" if g.value(r, KRIM.recordedByMunicipalPolice).toPython() else "no",
             code(g, st), label(g, st), code(g, rel), label(g, rel),
             " ".join(str(code(g, t)) for t in types),
             " ".join(str(c) for c in cats),
             str(g.value(r, KRIM.stateAsOf)),
         ])
-    records = _csv(["record", "report_date", "report_time", "report_month", "latitude", "longitude",
+    records = _csv(["record", "report_date", "report_time", "report_month", "area", "municipality_code",
+                    "municipality", "centre_latitude", "centre_longitude",
                     "municipal_police", "state_code", "state", "relevance_code", "relevance", "types",
                     "categories", "state_as_of"], rows)
 
@@ -78,7 +83,14 @@ def render() -> dict:
                       "" if b is None else code(g, b), code(g, top), label(g, top),
                       "yes" if top == t else "no"])
     types = _csv(["type", "label_en", "label_cs", "broader", "category_code", "category", "is_category"], trows)
-    return {TESTS / "sample-records.csv": records, TESTS / "sample-types.csv": types}
+    arows = []
+    for a in sorted(g.subjects(RDF.type, KRIM.AnonymisationArea), key=lambda a: int(g.value(a, DCTERMS.identifier))):
+        m = g.value(a, KRIM.inMunicipality)
+        arows.append([str(g.value(a, DCTERMS.identifier)), code(g, m), label(g, m, "cs"),
+                      str(g.value(a, KRIM.centreLatitude)), str(g.value(a, KRIM.centreLongitude))])
+    areas = _csv(["area", "municipality_code", "municipality", "centre_latitude", "centre_longitude"], arows)
+    return {TESTS / "sample-records.csv": records, TESTS / "sample-types.csv": types,
+            TESTS / "sample-areas.csv": areas}
 
 
 def main():
