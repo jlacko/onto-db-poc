@@ -416,6 +416,18 @@ names, so the lint expects no English label and reports shared names (912) as
 information, not as duplicates. The 39,927 areas are not in Turtle: they are a
 dataset, not a codelist, and live only in the database and the test sample.
 
+**Iteration 3.** Three more ČSÚ codelists, each a generated scheme:
+`orp-areas.ttl` (206, codelist 65), `okresy.ttl` (77, codelist 101) and
+`kraje.ttl` (14, codelist 100); the Extra-Regio item of 101 and 100 has no
+territory and is left out. The links come from ČSÚ's own relations between
+codelists, downloaded and cached like the codelists: municipality → ORP area and
+okres (43–65, 43–101) on each municipality; ORP area and okres → kraj (65–100,
+101–100). The builder stops if an item has two targets. Each kraj carries
+`skos:exactMatch` to its NUTS 3 IRI. All territorial units are proper names, so
+the lint expects Czech labels only and counts shared names within one level
+(still 912, all municipalities: Opava as a municipality, an ORP area and an
+okres is not a clash).
+
 ## Step 7: SHACL shapes (L writes, H reviews the sentences)
 
 File: `ontology/shapes.ttl`. One node shape per class. Every property shape

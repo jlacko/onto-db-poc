@@ -310,17 +310,21 @@ def check_lint(rep: Report):
             seen[key] = t.removeprefix(ns)
 
     # Codelist concepts: Czech label required; English expected; no duplicate labels among siblings.
-    # Municipalities are proper names: no English label, and many villages share a name (the code
-    # tells them apart), so they are checked for a Czech label only.
-    names = set(model.subjects(RDF.type, KRIM.Municipality))
+    # Territorial units (municipality, ORP area, okres, kraj) are proper names: no English label, and
+    # many villages share a name (the code tells them apart), so they are checked for a Czech label only.
+    names = set().union(*(model.subjects(RDF.type, KRIM[c]) for c in ("Municipality", "OrpArea", "Okres", "Kraj")))
+    n_mun = len(set(model.subjects(RDF.type, KRIM.Municipality)))
     concepts = sorted(set(model.subjects(RDF.type, SKOS.Concept)))
     missing_cs = [c for c in concepts if not any(l.language == "cs" for l in model.objects(c, SKOS.prefLabel))]
     missing_en = [c for c in concepts if c not in names
                   and not any(l.language == "en" for l in model.objects(c, SKOS.prefLabel))]
     if names:
-        shared = len(names) - len({str(model.value(c, SKOS.prefLabel)).lower() for c in names})
-        rep.add("INFO", f"{len(names)} municipalities (proper names, no English label expected); "
-                        f"{shared} share a name with another municipality and are told apart by code")
+        # Same name within one level (two villages called Lhota); across levels it is expected (Opava).
+        shared = len(names) - len({(tuple(sorted(model.objects(c, RDF.type))),
+                                    str(model.value(c, SKOS.prefLabel)).lower()) for c in names})
+        rep.add("INFO", f"{len(names)} territorial units ({n_mun} municipalities, the rest ORP areas, okresy "
+                        f"and kraje; proper names, no English label expected); {shared} share a name with "
+                        "another unit of the same level and are told apart by code")
     concepts = [c for c in concepts if c not in names]
     rep.add("FAIL" if missing_cs else "PASS", f"{len(concepts) + len(names)} codelist concepts, {len(missing_cs)} without a Czech label")
     rep.add("WARN" if missing_en else "PASS", f"{len(missing_en)} codelist concepts without an English label")
