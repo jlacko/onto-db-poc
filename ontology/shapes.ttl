@@ -29,6 +29,8 @@ kdb:primaryKey   a owl:AnnotationProperty ; rdfs:comment "true if the column is 
 kdb:linkTable    a owl:AnnotationProperty ; rdfs:comment "Many-valued property stored in a separate link table of this name." .
 kdb:languageColumns a owl:AnnotationProperty ; rdfs:comment "One column per language tag, named <column>_<lang>." .
 kdb:sourceField  a owl:AnnotationProperty ; rdfs:comment "Field name in the publisher's CSV extract." .
+kdb:index        a owl:AnnotationProperty ; rdfs:comment "true if the column needs a secondary index (foreign-key columns get one without the hint)." .
+kdb:uniqueColumns a owl:AnnotationProperty ; rdfs:comment "List of column names that are unique together: a UNIQUE index, the database counterpart of a uniqueness rule." .
 
 # ---------------------------------------------------------------------
 # Offence record (operational data)
@@ -54,14 +56,14 @@ krim:OffenceRecordShape
         sh:name "report date and time"@en , "datum a čas oznámení"@cs ;
         sh:description "Every offence record has exactly one report date and time."@en , "Každý záznam o deliktu má právě jedno datum a čas oznámení."@cs ;
         sh:datatype xsd:dateTime ; sh:minCount 1 ; sh:maxCount 1 ;
-        kdb:column "report_datetime" ; kdb:sourceField "date" ; sh:order 2
+        kdb:column "report_datetime" ; kdb:sourceField "date" ; kdb:index true ; sh:order 2  # period questions
     ] ;
     sh:property [
         sh:path krim:inAnonymisationArea ;
         sh:name "anonymisation area"@en , "anonymizační oblast"@cs ;
         sh:description "Every offence record lies in exactly one anonymisation area, the one whose centre is its published point."@en , "Každý záznam o deliktu leží právě v jedné anonymizační oblasti, té, jejíž střed je jeho zveřejněným bodem."@cs ;
         sh:class krim:AnonymisationArea ; sh:minCount 1 ; sh:maxCount 1 ;
-        kdb:column "area_id" ; sh:order 3
+        kdb:column "area_id" ; kdb:sourceField "y, x" ; sh:order 3  # derived: the published point (y = latitude, x = longitude) is matched to an area's centre
     ] ;
     sh:property [
         sh:path krim:recordedByMunicipalPolice ;
@@ -173,6 +175,7 @@ krim:AnonymisationAreaShape
     sh:ignoredProperties ( rdf:type ) ;
     kdb:table "anonymisation_area" ;
     kdb:iriColumn "iri" ;
+    kdb:uniqueColumns ( "centre_latitude" "centre_longitude" ) ;  # no two areas share a centre (see AnonymisationAreaCentreShape)
     sh:property [
         sh:path dcterms:identifier ;
         sh:name "area id"@en , "identifikátor oblasti"@cs ;
@@ -206,8 +209,8 @@ krim:AnonymisationAreaShape
     ] .
 
 # No two areas share a centre: the centre identifies the area a published
-# point belongs to. SHACL Core cannot compare focus nodes, so SPARQL (and a
-# unique index in SQL would be the database counterpart).
+# point belongs to. SHACL Core cannot compare focus nodes, so SPARQL; the
+# database counterpart is the UNIQUE index from kdb:uniqueColumns on the area shape.
 krim:AnonymisationAreaCentreShape
     a sh:NodeShape ;
     sh:targetClass krim:AnonymisationArea ;

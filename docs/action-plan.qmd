@@ -178,9 +178,9 @@ codelist 43, with referential integrity). The first draft had
 
 ## Step 2: Competency questions (L drafts, H edits and answers)
 
-File: `ontology/competency-questions.md`. 19 questions in five groups (counting
+File: `ontology/competency-questions.md`. 23 questions in four groups (counting
 and classification; place and time; provenance and vocabulary; identity and
-continuity of the history; known gaps).
+continuity of the history), plus a section for known gaps.
 Each question has:
 
 - precise **parameters** (e.g. "category 18 in month 2025-02");
@@ -221,9 +221,18 @@ TODO
 ```
 ~~~~
 
-One question (CQ17, *which municipality?*) is recorded as a **known gap**: the
-national downloads cannot answer it, and the document says what closing the gap
-would take.
+In iteration 1, one question (CQ17, *which municipality?*) was recorded as a
+**known gap**: the national downloads could not answer it.
+
+**Iteration 2.** The anonymisation areas closed that gap. Five questions came
+from the two new concept sentences: CQ17 (records per municipality) and CQ20
+(records per area of Pustá Polom, empty areas listed as 0) for the expert to
+answer by hand; CQ21 (areas per municipality), CQ22 (a record's municipality
+name) and CQ23 (records in no known area, expected empty) pre-filled. Both hand
+answers passed on the first try. The two hand-answered questions deliberately
+treat empty groups in opposite ways (CQ17 omits municipalities with no records,
+CQ20 lists empty areas), so the decision is made explicitly each time.
+
 
 ## Step 3: Reuse survey (L proposes, H approves)
 
@@ -278,8 +287,8 @@ items); the 39,927 areas live only in the database and the test sample.
 
 ## Step 4: Skeleton in Turtle (L)
 
-File: `ontology/kriminalita.ttl`. A lean OWL module of 4 classes and 8 own
-properties (after the revision in Step 10):
+File: `ontology/kriminalita.ttl`. A lean OWL module, in iteration 1 of 4 classes
+and 8 own properties (after the revision in Step 10):
 
 | Class | Meaning (abridged) |
 |---|---|
@@ -298,6 +307,17 @@ Rules from the guide applied here: **no `rdfs:domain` / `rdfs:range`** (they are
 inference rules, not constraints), plus only two modest axioms for the reasoner
 to check: records and codelist concepts are disjoint, and so are the three
 codelists.
+
+**Iteration 2** added two classes and four properties, each a sub-class or
+sub-property of the reused vocabulary (Step 3): `krim:AnonymisationArea` and
+`krim:Municipality` (both `gsp:Feature`; municipalities are also codelist
+concepts), `inAnonymisationArea` (record to area, `dcterms:spatial`),
+`inMunicipality` (area to municipality, `gsp:sfWithin`), `centreLatitude` and
+`centreLongitude` (`geo:lat` / `geo:long`). The record's `anonymisedLatitude` and
+`anonymisedLongitude` became the first real **deprecation**: `owl:deprecated
+true`, `dcterms:isReplacedBy` the area and its centre, status `archaic`. A new
+lint rule requires a replacement and warns while shapes still use a deprecated
+term. Now 6 classes and 12 own properties, 2 of them deprecated.
 
 ## Step 5: Definitions and annotations (L writes, H reviews)
 
@@ -324,6 +344,12 @@ documentation, supplied by the human, showed it is the time of report. Because
 0.1.0 was unreleased it was renamed; after a release it would have needed
 deprecation and a new IRI.
 
+**Iteration 2.** The centre's definition says what the reused name would have
+hidden: it is the publisher's K-means cluster centre, sometimes moved inside the
+municipality, *not* the polygon's centroid. Deprecated terms leave the Czech
+glossary (current terms only); the data dictionary lists them in an appendix
+with their replacements.
+
 ## Step 6: Reference data (S generates, H maintains translations)
 
 `scripts/build_reference.py` downloads the three JSON-LD codelists and writes
@@ -333,6 +359,14 @@ label, `skos:exactMatch` to the publisher IRI and `skos:broader` for the
 hierarchy. English labels and the definitions of states and relevance live in a
 **hand-maintained CSV** (`codelist-texts.csv`); the Turtle files are generated and
 never edited.
+
+**Iteration 2.** Municipalities come from ČSÚ codelist 43, downloaded as CSV by
+`build_reference.py` and cached in `build/cache` for 30 days: a generated SKOS
+scheme of 6,258 concepts (code, Czech name). The four military training areas
+carry a definition from `codelist-texts.csv`. Municipality names are proper
+names, so the lint expects no English label and reports shared names (912) as
+information, not as duplicates. The 39,927 areas are not in Turtle: they are a
+dataset, not a codelist, and live only in the database and the test sample.
 
 ## Step 7: SHACL shapes (L writes, H reviews the sentences)
 
@@ -357,6 +391,14 @@ Two rules are **warnings**, not violations: points should lie inside the Czech
 bounding box, and a record tagged with a type should also carry its broader
 type. These are conventions of the source, not rules of the domain.
 
+**Iteration 2.** The record shape swapped its coordinates for exactly one
+anonymisation area. New shapes: the area (closed; publisher's id, centre,
+municipality; no two areas share a centre, as SPARQL; the "in Czechia" warning
+moved here) and the municipality. The municipality has its own rules instead of
+the shared codelist shape, because there is no linked-data IRI to match. This
+step was committed with validation **knowingly failing**: the sample data still
+had coordinates, so SHACL, the sample load and the CQ tests failed until Step 8.
+
 ## Step 8: Test suite (L builds, H answers CQs)
 
 | File | Content |
@@ -368,6 +410,15 @@ type. These are conventions of the source, not rules of the domain.
 | `tests/observations/*.csv` | two downloads of the same month observed at different times: the loader's "latest state wins" test |
 
 : Test suite {tbl-colwidths="[30,70]"}
+
+**Iteration 2.** Every sample record lies in a real area (published ids and
+centres). The sample holds all four areas of Pustá Polom (two with no records),
+the single area of the military training area Boletice, the city areas used,
+and one **fictional** area centred in Vienna that raises the "in Czechia"
+warning (real areas all lie in Czechia; the warning guards against a corrupted
+list). Three negative tests for areas were added (centre out of range, shared
+centre, missing municipality); the sample CSVs gained area and municipality
+columns and `sample-areas.csv`.
 
 ## Step 9: Validation loop (S; run after every change)
 
@@ -384,7 +435,7 @@ type. These are conventions of the source, not rules of the domain.
 | 5. SHACL | sample data conforms; exactly the expected warning is raised; each negative test (including a duplicate identifier) fails *for the stated reason* |
 | 6. Generated artifacts | `db/schema.sql`, the dictionary, the glossary, the sample CSVs and the CQ index are current; the sample loads into the schema with no FK errors |
 | 7. Competency questions | SPARQL = SQL (parity), and both = the expected answer written in the spec; for hand-answered questions a failure explains where, never the computed values (`--show-answers` prints them) |
-| 8. Loader | the same record observed twice, in either order, ends as one row in the latest state; reloading is idempotent |
+| 8. Loader | the same record observed twice, in either order, ends as one row in the latest state; reloading is idempotent; a point is matched to its area's centre (one micro-degree tolerance), and a point that is no area's centre is skipped and counted |
 
 : The validation loop {tbl-colwidths="[25,75]"}
 
@@ -507,7 +558,7 @@ and exported by:
 
 : Data dictionary outputs {tbl-colwidths="[45,55]"}
 
-It covers 34 columns (data elements) with 19 fields each. A manual step
+It covers 49 columns (data elements) with 19 fields each (34 in iteration 1). A manual step
 closed the reused-property gap: every column shape got a Czech name
 (`sh:name "..."@cs`), and shapes whose path is a generic reused property got a
 local data-element definition (`skos:definition` on the shape). For example:
@@ -563,7 +614,11 @@ One example row, as it appears in the dictionary:
    back-off on HTTP 429.
 3. Parse each file: map CSV fields to columns through `kdb:sourceField`, keep
    rows whose report date falls in the year, set `state_as_of` to the file's
-   `updated` stamp.
+   `updated` stamp. **Match the published point (`y`, `x`) to an area's centre**
+   (iteration 2): exactly, or within one micro-degree, since the publisher rounds
+   to six decimals. A point that is no area's centre is reported and the record
+   skipped, never placed in the nearest area. The areas are loaded once from the
+   publisher's polygon list, cached in `build/cache`.
 4. **Merge: latest observation wins.** New records are inserted; a record
    already present is replaced (with its type links) only if the new
    observation is as recent or more recent; an older observation is ignored.
@@ -598,11 +653,24 @@ Result for 2025:
 | rows rejected (unknown code) | 0 |
 | foreign-key violations | 0 |
 | records outside the Czech box / missing broader type | 0 / 0 |
+| points that are no area's centre (iteration 2) | 0 |
+| anonymisation areas loaded / holding no record | 39,927 / 5,138 |
+| municipalities | 6,258 |
 | records timestamped exactly 00:00 | 1,168 (open question for the domain expert) |
 | SHACL on 1,000 random real records (including the uniqueness rule) | conforms (24 s) |
-| database size | about 380 MB |
+| database size | about 440 MB (380 MB in iteration 1; new indexes and area tables) |
+| full rebuild from the cache, quality report and SHACL sample included | under 2 minutes |
 
 : Load result, 2025 {tbl-colwidths="[60,40]"}
+
+**Iteration 2: indexes.** The first rebuild hung for over ten minutes in a new
+quality check ("areas holding no record"): SQLite does not index foreign-key
+columns, and `offence_record.area_id` had none, so the check scanned all records
+once per area. The DDL generator now indexes **every foreign-key column** by
+rule, plus columns with a `kdb:index` hint (the report date, formerly the one
+hard-coded index) and keys with a `kdb:uniqueColumns` hint (an area's centre:
+the database counterpart of the SPARQL uniqueness rule). The schema was
+correct; its performance had not been designed.
 
 ## Step 14: Business glossary in Czech (S generates, H reviews the wording)
 
@@ -666,9 +734,8 @@ CQ06, open question 5).
 
 # Next steps
 
-1. **Iterate from Step 2** with the anonymisation areas (S6, S7 in
-   `concepts.md`); municipalities come from ČSÚ codelist 43 (*obec*), with
-   referential integrity.
+1. ~~Iteration 2: anonymisation areas and municipalities~~ (done: Steps 1–14,
+   all 23 competency questions pass; release as 0.2.0 when merged).
 2. ~~Answer the five pending CQs~~ (done: all pass; see Step 2).
 3. **Resolve the six open questions** (H), then update definitions; the
    `mp` editorial note goes once the publisher confirms.
@@ -683,5 +750,4 @@ CQ06, open question 5).
 7. **First published release 1.0.0** (guide, part IV): fix the namespace, add
    `owl:priorVersion` from then on, release ontology, shapes, DDL, dictionary and
    glossary as one bundle.
-8. **Close the CQ17 gap (municipality)**: now part of iteration 2, since the
-   anonymisation areas carry RÚIAN municipality codes.
+8. ~~Close the CQ17 gap (municipality)~~ (done in iteration 2).

@@ -534,6 +534,7 @@ An offence record is an information record, kept by the Police of the Czech Repu
 | **Value domain** | identifier of a row in anonymisation\_area |
 | **Cardinality** | 1..1 |
 | **Business rule** | Every offence record lies in exactly one anonymisation area, the one whose centre is its published point. |
+| **Source field (CSV)** | `y, x` |
 | **Status** | draft |
 
 : {tbl-colwidths="[22,78]"}

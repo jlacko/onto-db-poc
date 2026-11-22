@@ -673,13 +673,19 @@ def check_loader(rep: Report):
     o1 = ((obs / "observation-1.csv").read_text(encoding="utf-8"), "2026-01-10T00:00:00")
     o2 = ((obs / "observation-2.csv").read_text(encoding="utf-8"), "2026-06-10T00:00:00")
 
+    # Four areas whose centres are the fixture points (the real list has 39,927).
+    areas = [{"iri": f"https://example.org/kriminalita/area/{i}", "id": i, "centre_latitude": lat,
+              "centre_longitude": lon, "municipality_code": m}
+             for i, lat, lon, m in ((1, 50.081, 14.421, 554782), (2, 49.195, 16.608, 582786),
+                                    (3, 49.835, 18.282, 554821), (4, 50.091, 14.401, 554782))]
+
     def run(sequence):
-        con = load.create_db(":memory:")
+        con = load.create_db(":memory:", areas=areas)
         known, stats = load.known_codes(con), []
         for text, observed in sequence:
-            records, types, _ = load.parse(text, observed, 2025, known)
+            records, types, st = load.parse(text, observed, 2025, known)
             with con:
-                stats.append(load.merge(con, records, types))
+                stats.append(load.merge(con, records, types) | {"no_area": st["no_area"]})
         return con, stats
 
     def final_state(con):
@@ -689,7 +695,7 @@ def check_loader(rep: Report):
             "SELECT offence_type_code FROM offence_record_type WHERE offence_record_id = 5001"))
         return ids, st, asof, types
 
-    want = ([5001, 5002, 5003], 1, "2026-06-10T00:00:00", [18, 20])
+    want = ([5001, 5002, 5003, 5005], 1, "2026-06-10T00:00:00", [18, 20])
     for label, seq in (("older then newer", [o1, o2]), ("newer then older", [o2, o1])):
         con, stats = run(seq)
         got = final_state(con)
@@ -702,10 +708,17 @@ def check_loader(rep: Report):
             f"5002 still added (new {stats[1]['new']})")
     con, stats = run([o1, o2, o2])
     n = con.execute("SELECT COUNT(*) FROM offence_record").fetchone()[0]
-    rep.add("PASS" if n == 3 and stats[2]["new"] == 0 else "FAIL",
+    rep.add("PASS" if n == 4 and stats[2]["new"] == 0 else "FAIL",
             f"reloading the same observation is idempotent ({n} records, {stats[2]['new']} new)")
     rep.add("PASS" if stats[1]["state_changes"] == 1 else "FAIL",
             f"state change detected for 5001 (unsolved -> cleared): {stats[1]['state_changes']}")
+    areas_of = dict(con.execute("SELECT id, area_id FROM offence_record"))
+    rep.add("PASS" if areas_of.get(5001) == 1 and areas_of.get(5005) == 3 else "FAIL",
+            f"points matched to area centres: 5001 -> {areas_of.get(5001)} (exact), "
+            f"5005 -> {areas_of.get(5005)} (one micro-degree off); expected 1 and 3")
+    rep.add("PASS" if stats[0]["no_area"] == 1 and 5004 not in areas_of else "FAIL",
+            f"a point that is no area's centre is skipped and counted, never placed nearby: "
+            f"{stats[0]['no_area']} skipped, 5004 {'absent' if 5004 not in areas_of else 'LOADED'}")
 
 
 # ---------------------------------------------------------------------------
