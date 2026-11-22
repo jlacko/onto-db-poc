@@ -67,7 +67,7 @@ ontology would have hidden:
 5. **A wrong meaning, fixed before release.** The timestamp was first modelled as
    "incident date and time". The publisher's help pages show it is the date of
    report/registration, so the property became `krim:reportDateTime` (renaming is
-   allowed only because 0.1.0 is unreleased).
+   allowed only because 0.1.0 was not yet released).
 6. **An undocumented field.** `mp` = municipal police, corroborated by the OpenAPI
    description; it carries an editorial note until the publisher confirms.
 7. **A publisher documentation error.** The OpenAPI description labels `x` as
