@@ -14,7 +14,7 @@ renamed or removed.
 
 | Step | Here |
 |---|---|
-| Concepts and cardinality (*our addition, not in the PDF*) | [`ontology/concepts.md`](ontology/concepts.md): key relations as plain sentences with a cardinality ("every record has exactly one clearance state"), judged true/false by the domain expert (✍), each traced to the SHACL shape that enforces it |
+| Concepts and how they relate (*our addition, not in the PDF*) | [`ontology/concepts.md`](ontology/concepts.md): seven sentences in domain language, one per relationship, both ends ("a record has one or more offence types; a type covers any number of records"), judged by the domain expert and traced to the SHACL shape that enforces it |
 | Competency questions | [`ontology/competency-questions.md`](ontology/competency-questions.md): an editable worksheet with executable `expected` answers. Some are left for the domain expert to answer by hand (✍). |
 | Reuse survey | SKOS (codelists), DCTERMS, DCAT, PROV-O, W3C WGS84, VS term status; the publisher's own codelist IRIs linked with `skos:exactMatch` |
 | Skeleton + definitions | [`ontology/kriminalita.ttl`](ontology/kriminalita.ttl): 5 classes, 9 properties, en/cs labels, genus–differentia definitions, scope notes, sources |

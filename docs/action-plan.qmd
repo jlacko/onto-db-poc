@@ -122,54 +122,59 @@ Facts that mattered for modelling:
 Each step names who does the work: **H** = human (domain expert), **L** = LLM
 (Claude Code), **S** = script (deterministic, rerunnable).
 
-## Step 1: Concepts and cardinality (L drafts, H judges, S checks)
+## Step 1: Concepts and how they relate (L drafts, H judges, S checks)
 
 *Added after release 0.1.0; not in the guide.* File: `ontology/concepts.md`.
-Before any competency question, the key concepts and their relations are stated
-as plain sentences, one per statement, each with a cardinality: *"Every offence
-record has exactly one clearance state"*, *"An anonymisation area is shared by
-any number of records"*. The domain expert marks each one `true`, `false` or
-`depends`. A judgement takes seconds; answering a competency question by hand
-takes much longer.
+Before any competency question, the relationships between the key concepts are
+written as **seven sentences in domain language**, each with both ends: *"An
+offence record has one or more offence types; an offence type covers any number
+of records."* The domain expert marks each one `true`, `false` or `depends`. A
+judgement takes seconds and needs no technical knowledge; answering a
+competency question by hand takes much longer.
 
-Each statement is asked two ways: is it true **in the domain**, and is it what
+Each sentence is asked two ways: is it true **in the world**, and is it what
 **the source** chose to keep? An offence can involve several places (reported,
-consequence, committed); the publisher keeps one per record and labels its kind.
-Writing both answers down keeps the source's choices from passing as facts of
-the domain.
+consequence, committed); the publisher keeps one per record and labels its
+kind. Writing both down keeps the source's choices from passing as facts of the
+domain.
 
 ~~~~text
-### S06: Every offence record has exactly one clearance state.
-```statement
+### S3: An offence record has exactly one clearance state at a time;
+###     a clearance state applies to any number of records.
+Verdict: true
+```validator
 subject: krim:OffenceRecord
 path:    krim:hasClearanceState
-object:  krim:ClearanceState
 count:   1..1
-verdict: true
+inverse: 0..*
 shape:   krim:OffenceRecordShape
 ```
 ~~~~
 
-The statements are traceable: each names the SHACL shape that enforces it, and
-the validation loop (section 3) checks that every statement marked `true` is
-enforced with the same cardinality, that no shape enforces a statement marked
-`false`, and lists shape cardinalities that no statement covers. Rejected
-statements stay in the file (e.g. *"every record belongs to exactly one monthly
-extract"*): they record mistakes the model must not make again. Where the LLM
-or a script checked a statement against the source data, the block carries the
-evidence (e.g. *every 2025 record's point is the centre of one anonymisation
-area*).
+The expert reads the sentence and the verdict; the `validator` block is for the
+validation loop (section 3), which checks that every sentence marked `true` is
+enforced by the shape it names with the same cardinality, and that no shape
+enforces a sentence marked `false`. A sentence marked `true` that is not yet
+modelled is a warning: a to-do for the modelling steps.
+
+**Scope: relationships only.** Attributes (identifier, dates, flags, an area's
+centre) are not here; they are stated as the shapes' plain-language rules and
+reviewed in Step 7. Data-quality findings go to the quality report, open domain
+questions to section F of the CQ file. The file shows the **current model
+only**, plus sentences awaiting a verdict; git keeps the history.
 
 **Why it was added.** The two largest corrections of the first version were
 structural, not answers: the monthly download file modelled as a concept
-(pagination, a "one record, one extract" claim), and the anonymised location
-modelled as a value on the record, when it is a shared area (many records, one
-area). The competency questions caught neither. A list of cardinality sentences
-asks exactly these questions, early and cheaply.
+(pagination), and the anonymised location modelled as a value on the record,
+when it is a shared area (many records, one area). The competency questions
+caught neither. Sentences about how concepts relate ask exactly these
+questions, early and cheaply.
 
-**Outcome.** 21 statements: 13 for the model of release 0.1.0 (all enforced),
-2 rejected, and 6 for the anonymisation areas of iteration 2, awaiting the
-expert's verdict.
+**Outcome.** Seven sentences: five for the model of release 0.1.0 (all
+enforced) and two for the anonymisation areas, both confirmed: a record lies in
+exactly one area, and an area in exactly one municipality (*obec*, ČSÚ
+codelist 43, with referential integrity). The first draft had
+21 statements and was cut down twice (see lessons learned).
 
 ## Step 2: Competency questions (L drafts, H edits and answers)
 
@@ -340,7 +345,7 @@ type. These are conventions of the source, not rules of the domain.
 |---|---|
 | 1. Parse | all Turtle files parse |
 | 2. Reasoner | HermiT finds ontology + reference + sample data consistent, *and* finds a contradictory individual inconsistent (negative test) |
-| 3. Concepts | every statement marked `true` in `concepts.md` is enforced by the shape it names, with the same cardinality; no shape enforces a statement marked `false` |
+| 3. Concepts | every sentence marked `true` in `concepts.md` is enforced by the shape it names, with the same cardinality; no shape enforces a sentence marked `false`; a true sentence not yet modelled is a warning |
 | 4. Lint | every term has en/cs labels, one definition, a status; no `rdfs:domain`/`range`; no duplicate labels; every `krim:` term used in shapes, samples and queries is declared; every property shape has a plain-language rule; every column has en/cs names, a definition and a value domain (data dictionary); every business term, code and record rule has its Czech text (glossary) |
 | 5. SHACL | sample data conforms; exactly the expected warning is raised; each negative test (including a duplicate identifier) fails *for the stated reason* |
 | 6. Generated artifacts | `db/schema.sql`, the dictionary, the glossary, the sample CSVs and the CQ index are current; the sample loads into the schema with no FK errors |
@@ -612,8 +617,8 @@ CQ06, open question 5).
 |---|:-:|:-:|:-:|
 | Scope, choice of Python, pointers to R project and documentation | ● | | |
 | Source reconnaissance (API, codelists, docs) | | ● | |
-| Drafting concept statements; checking them against the source | | ● | ● |
-| Judging concept statements | ● | | |
+| Drafting concept sentences; checking them against the source | | ● | ● |
+| Judging concept sentences | ● | | |
 | Drafting competency questions and decisions | | ● | |
 | Answering key CQs by hand; reviewing decisions | ● | | |
 | Skeleton, definitions, shapes | | ● | |
@@ -627,8 +632,9 @@ CQ06, open question 5).
 
 # Next steps
 
-1. **Judge the six concept statements for the anonymisation areas** (H;
-   S16–S21 in `concepts.md`), then iterate from Step 2.
+1. **Iterate from Step 2** with the anonymisation areas (S6, S7 in
+   `concepts.md`); municipalities come from ČSÚ codelist 43 (*obec*), with
+   referential integrity.
 2. ~~Answer the five pending CQs~~ (done: all pass; see Step 2).
 3. **Resolve the six open questions** (H), then update definitions; the
    `mp` editorial note goes once the publisher confirms.

@@ -6,9 +6,9 @@ Checks, in order:
   1. parse      all Turtle files parse
   2. reasoner   HermiT finds the ontology + reference + sample data consistent,
                 and finds a deliberately contradictory individual inconsistent
-  3. concepts   every statement in ontology/concepts.md marked true is enforced
+  3. concepts   every sentence in ontology/concepts.md marked true is enforced
                 by the shape it names, with the same cardinality; no shape
-                enforces a statement marked false
+                enforces a sentence marked false
   4. lint       labels, definitions, status, duplicates, undeclared terms, policy,
                 data-dictionary and Czech glossary completeness
   5. shacl      sample data conforms; each negative test fails for the expected reason
@@ -130,18 +130,22 @@ def check_reasoner(rep: Report):
 
 
 # ---------------------------------------------------------------------------
-STATEMENT_KEYS = ("subject", "path", "object", "count", "verdict", "shape")
+STATEMENT_KEYS = ("subject", "path", "object", "count", "shape")
 VERDICTS = ("true", "false", "depends")
 
 
 def parse_statements() -> dict[str, dict]:
-    """{S01: {title, subject, path, ...}} from the statement blocks in concepts.md."""
+    """{S1: {title, verdict, subject, path, ...}} from ontology/concepts.md: the
+    sentence is the heading, the verdict a line below it, the rest a validator block."""
     text = (ONTO / "concepts.md").read_text(encoding="utf-8")
     out = {}
     parts = re.split(r"^### (S\d+): (.*)$", text, flags=re.M)
     for sid, title, body in zip(parts[1::3], parts[2::3], parts[3::3]):
-        m = re.search(r"```statement\n(.*?)```", body, re.S)
-        st = {"title": title.replace("✍ your verdict", "").strip(), "block": m is not None}
+        m = re.search(r"```validator\n(.*?)```", body, re.S)
+        v = re.search(r"^Verdict:\s*(\S+)", body, re.M)
+        st = {"title": title.strip(), "block": m is not None}
+        if v:
+            st["verdict"] = v.group(1)
         for line in (m.group(1).splitlines() if m else []):
             if ":" in line:
                 k, v = line.split(":", 1)
@@ -186,7 +190,10 @@ def check_concepts(rep: Report):
         label = f"{sid} {st['title'].rstrip('.')}"
         missing = [k for k in STATEMENT_KEYS if k not in st]
         if not st["block"] or missing:
-            rep.add("FAIL", f"{label}: statement block missing or incomplete (needs {', '.join(missing or STATEMENT_KEYS)})")
+            rep.add("FAIL", f"{label}: validator block missing or incomplete (needs {', '.join(missing or STATEMENT_KEYS)})")
+            continue
+        if "verdict" not in st:
+            rep.add("FAIL", f"{label}: no 'Verdict:' line")
             continue
         verdict, shape, path, count = st["verdict"], st["shape"], st["path"], st["count"]
         if not re.fullmatch(r"\d+\.\.(\d+|\*)", count):
@@ -253,7 +260,8 @@ def check_concepts(rep: Report):
                 continue
             uncovered.append(f"{g.namespace_manager.normalizeUri(n)} {g.namespace_manager.normalizeUri(g.value(ps, SH.path))} {_counts(g, ps)}")
     if uncovered:
-        rep.add("INFO", f"{len(uncovered)} shape cardinalities have no statement: " + "; ".join(sorted(set(uncovered))))
+        rep.add("INFO", f"{len(set(uncovered))} other cardinalities in the shapes (attributes, codelist "
+                        "fields) are stated as the shapes' own plain-language rules, not in concepts.md")
 
 
 # ---------------------------------------------------------------------------

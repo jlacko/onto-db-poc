@@ -2,7 +2,7 @@
 
 Proof of concept of the ontology-first approach described in
 `llm-readable-ontologies.pdf`. **Primary aim: validate the LLM ontology method**
-(concepts and cardinality → competency questions → reuse → Turtle skeleton →
+(concepts and how they relate → competency questions → reuse → Turtle skeleton →
 definitions → mechanical validation loop → CQ tests). The first step is our
 addition; the PDF was an inspiration, not a template. The SQLite database built from Police CR crime data
 is the secondary objective: it is the test that the ontology can drive a real
@@ -15,7 +15,7 @@ for the API, not a template). Use the venv: `.venv/bin/python`.
 
 | Path | What | Edited by |
 |------|------|-----------|
-| `ontology/concepts.md` | Concepts and cardinality: one sentence per statement, the expert's verdict, the shape that enforces it. Change it first when structure changes. | hand |
+| `ontology/concepts.md` | How the key concepts relate: a few sentences in domain language (relationships only, both ends), the expert's verdict, the shape that enforces each. Change it first when structure changes. | hand |
 | `ontology/competency-questions.md` | The spec. Change it first. The index at the top is generated (`scripts/cq_index.py`). | hand |
 | `ontology/kriminalita.ttl` | Core OWL module: classes, properties, definitions | hand |
 | `ontology/shapes.ttl` | SHACL shapes = closed-world data rules; drive the DDL | hand |

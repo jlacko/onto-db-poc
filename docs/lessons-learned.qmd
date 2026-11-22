@@ -174,19 +174,29 @@ failures now say only *where* the answer disagrees (missing columns, rows with
 no counterpart, which columns differ, row counts) and confirm the filled
 columns that agree; the values appear only with an explicit `--show-answers`.
 
-*Extension, added after release 0.1.0: concepts and cardinality first.* The two
-largest corrections of the first version were structural: the monthly download
-file modelled as a concept, and the anonymised location modelled as a value on
-the record when it is a shared area (a fact found on the publisher's website
-after the release). The competency questions caught neither, because they ask
-for answers, not for what exists and how many. So the sequence now starts with
-a new step that the guide does not have: the key relations written as plain
-sentences with a cardinality (*"every offence record has exactly one clearance
-state"*), judged true or false by the expert, each asked twice (true in the
-domain? kept by the source?) and traced to the shape that enforces it. The
-validation loop checks the trace both ways. Rejected statements stay in the
-file as a record of mistakes not to repeat. Whether the step earns its place is
-for iteration 2 to show.
+*Extension, added after release 0.1.0: concepts and how they relate, first.*
+The two largest corrections of the first version were structural: the monthly
+download file modelled as a concept, and the anonymised location modelled as a
+value on the record when it is a shared area (a fact found on the publisher's
+website after the release). The competency questions caught neither, because
+they ask for answers, not for what exists and how many. So the sequence now
+starts with a step the guide does not have: the relationships between key
+concepts written as sentences in domain language, each with both ends (*"an
+offence record has one or more offence types; an offence type covers any
+number of records"*), judged by the expert and traced to the shape that
+enforces it. Whether the step earns its place is for iteration 2 to show.
+
+*Keep it short, or it stops being the expert's.* The LLM's first draft had 21
+statements; the expert's gut feeling was that this was bloated for a small
+problem, and it was. Most statements were about attributes (identifier,
+dates, flags), which duplicated the plain-language rules already on the shapes
+and which no domain expert has an opinion on; the inverse direction of a
+relationship was a statement of its own; rejected statements were kept as
+history; and data-quality findings were creeping in. Cut to relationships
+only, both ends in one sentence, current model only, it is seven sentences, a
+non-technical reader can judge them in a few minutes, and the validator checks
+the same structure. An LLM drafting a checklist tends to make it complete
+rather than short; the human has to ask what the checklist is *for*.
 
 ## Practice 2: An LLM-friendly source format (Adapted)
 
