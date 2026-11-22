@@ -1,7 +1,7 @@
 ---
 title: "Ontology-first database: lessons learned"
 subtitle: "The LLM ontology method, tested against *Building and Running Ontologies with LLMs*"
-date: 2026-11-21
+date: 2026-11-22
 format:
   pdf:
     documentclass: scrartcl
@@ -346,6 +346,8 @@ it realises (`meta_release`). One lifecycle rule was exercised twice for real:
 a property was renamed, and three terms (the monthly extract) were removed,
 only because 0.1.0 was unreleased; after a release both would require
 deprecation (`owl:deprecated`, `dcterms:isReplacedBy`) and a major version.
+That point has now been reached: the first version is tagged `v0.1.0` as the
+baseline for iteration, so the deprecation rule applies to every later change.
 
 The guide's **two time axes** turned up inside the data as well. Records are
 republished as investigations progress, so each record has a *report time*

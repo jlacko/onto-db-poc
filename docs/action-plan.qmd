@@ -1,7 +1,7 @@
 ---
 title: "Ontology-first database: action plan"
 subtitle: "From toolchain to a populated SQLite database of Czech crime data"
-date: 2026-11-21
+date: 2026-11-22
 format:
   pdf:
     documentclass: scrartcl
@@ -584,7 +584,9 @@ CQ06, open question 5).
 4. **Review the Czech glossary** (H): correct the wording of the business
    definitions in the ontology, then add the pending derived terms once the CQ
    decisions are made.
-5. **First release 1.0.0** (guide, part IV): fix the namespace, add
+5. ~~Baseline~~ (done: first version merged and tagged `v0.1.0`; later
+   iterations are compared against it, and terms are deprecated, not removed).
+6. **First published release 1.0.0** (guide, part IV): fix the namespace, add
    `owl:priorVersion` from then on, release ontology, shapes, DDL, dictionary and
    glossary as one bundle.
-6. Optional: close the CQ17 gap (municipality) using RÚIAN reference data.
+7. Optional: close the CQ17 gap (municipality) using RÚIAN reference data.
