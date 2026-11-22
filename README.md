@@ -6,9 +6,9 @@ itself. The secondary aim is to prove it can drive a real database: SQLite,
 populated with a continuous, duplicate-free history of Czech crime records from the Police CR API
 (`kriminalita.policie.gov.cz`).
 
-**Status:** first version merged to `main` and tagged `v0.1.0` (ontology 0.1.0),
-the baseline for further iterations. From here on, terms are deprecated, not
-renamed or removed.
+**Status:** ontology release 0.2.0 on `main`, tagged `v0.2.0` (iteration 2:
+anonymisation areas and municipalities); the first version is tagged `v0.1.0`.
+Terms are deprecated, not renamed or removed.
 
 ## The sequence (adapted from PDF part I)
 

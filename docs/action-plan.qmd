@@ -593,7 +593,7 @@ One example row, as it appears in the dictionary:
 | Value domain | code from codelist clearance_state (4 values, see appendix) |
 | Cardinality, key | 1..1, FK to `clearance_state(code)` |
 | Business rule | Every offence record has exactly one clearance state. |
-| Source field, status, release | `state`, draft, 0.1.0 |
+| Source field, status, release | `state`, draft, 0.2.0 |
 
 : One data element {tbl-colwidths="[28,72]"}
 
@@ -739,7 +739,7 @@ CQ06, open question 5).
 # Next steps
 
 1. ~~Iteration 2: anonymisation areas and municipalities~~ (done: Steps 1–14,
-   all 23 competency questions pass; release as 0.2.0 when merged).
+   all 23 competency questions pass; released as 0.2.0, tagged `v0.2.0`).
 2. ~~Answer the five pending CQs~~ (done: all pass; see Step 2).
 3. **Resolve the six open questions** (H), then update definitions; the
    `mp` editorial note goes once the publisher confirms.

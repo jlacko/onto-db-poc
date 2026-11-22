@@ -25,11 +25,20 @@ continuous history keyed by
 the record identifier (the publisher's monthly download files are pagination, not part
 of the model). Location data exist from about mid-2013. Built ontology-first as a proof of concept; the SQLite schema is
 generated from the SHACL shapes that accompany this module."""@en ;
-    owl:versionIRI <https://example.org/kriminalita/ontology/0.1.0> ;
-    owl:versionInfo "0.1.0" ;
-    dcterms:modified "2026-11-21T00:00:00"^^xsd:dateTime ;
+    owl:versionIRI <https://example.org/kriminalita/ontology/0.2.0> ;
+    owl:versionInfo "0.2.0" ;
+    owl:priorVersion <https://example.org/kriminalita/ontology/0.1.0> ;
+    dcterms:modified "2026-11-22T00:00:00"^^xsd:dateTime ;
     dcterms:source <https://kriminalita.policie.gov.cz/> ;
-    rdfs:comment """Release 0.1.0: initial draft. Placeholder namespace example.org. Before
+    rdfs:comment """Release 0.2.0: anonymisation areas and municipalities. A published location
+is the centre of one of the publisher's predefined anonymisation areas, so a record
+now lies in an area (krim:inAnonymisationArea), and an area in a municipality
+(krim:inMunicipality, ČSÚ codelist 43). krim:anonymisedLatitude and
+krim:anonymisedLongitude are deprecated, replaced by the area and its centre
+(krim:centreLatitude, krim:centreLongitude). A change of meaning: before 1.0 that
+is a minor version.
+
+Release 0.1.0: initial draft. Placeholder namespace example.org. Before
 release, the monthly extract (krim:MonthlyExtract, krim:referenceMonth, krim:publishedIn)
 was removed: the monthly files are the publisher's pagination, not a domain concept.
 krim:stateAsOf replaces it as the time axis of observation."""@en .

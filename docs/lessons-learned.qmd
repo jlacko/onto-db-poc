@@ -395,7 +395,8 @@ the publisher reported the state we hold). Keeping only the latest state is a
 deliberate simplification; it makes every clearance rate an "as of" figure,
 which the dictionary and CQ11 now state explicitly.
 
-Not yet tested: `owl:priorVersion`, release bundles, named graphs, effective
+Release 0.2.0 points back with `owl:priorVersion` (0.1.0), and the schema,
+dictionary and glossary carry the new release stamp. Not yet tested: release bundles, named graphs, effective
 dating of reference data.
 
 # Lessons on the data dictionary (a key output)
