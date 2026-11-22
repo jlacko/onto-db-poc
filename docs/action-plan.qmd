@@ -506,11 +506,15 @@ using these mapping rules:
 | `sh:node` | inherited property shapes (shared codelist shape) |
 | self-reference (`skos:broader`) | `<table>_ancestor` recursive closure view |
 | severity Warning | **not** enforced in the schema; reported by the loader |
+| foreign-key column (any `sh:class`) | an index (SQLite does not index foreign keys itself) |
+| `kdb:index` | an index on a column that is not a foreign key (the report date) |
+| `kdb:uniqueColumns` on a node shape | a UNIQUE index: the database counterpart of a SPARQL uniqueness rule (an area's centre) |
 
 : From shapes to DDL {tbl-colwidths="[38,62]"}
 
-Result: 5 domain tables (`offence_record`, `offence_record_type`,
-`offence_type`, `clearance_state`, `location_relevance`), the view
+Result: 7 domain tables (`offence_record`, `offence_record_type`,
+`offence_type`, `clearance_state`, `location_relevance`, and from iteration 2
+`anonymisation_area` and `municipality`), the view
 `offence_type_ancestor`, two technical tables for the loader (`source_file`,
 `load_run`, declared in `scripts/dictionary.py` and marked *technical* in the
 dictionary), and two metadata tables: `meta_release` (the ontology version the

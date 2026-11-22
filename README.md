@@ -43,7 +43,10 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 Downloads are cached in `build/cache/zips/`; a file is fetched again only if the
 publisher has a newer version and the cached copy is older than `--max-age-days`
-(default 7). `--offline` uses the cache only.
+(default 7). `--offline` uses the cache only. The publisher's list of
+anonymisation areas (`voronoi.geojson.zip`, a fixed file from 2022) is downloaded
+once into `build/cache/`; ČSÚ codelist 43 (municipalities) is cached there by
+`build_reference.py` and refreshed after 30 days.
 
 Regenerate the generated artifacts after changing their sources:
 

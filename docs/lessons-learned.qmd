@@ -373,7 +373,7 @@ only) and a language split by audience.
   *not* enforced in the schema; the loader reports them instead.
 - **Data dictionary.** See section 4.
 
-## Part IV: Lifecycle (Partly tested)
+## Part IV: Lifecycle (Confirmed in part)
 
 `owl:versionIRI` and `owl:versionInfo` are set; the schema records the release
 it realises (`meta_release`). One lifecycle rule was exercised twice for real:
@@ -382,6 +382,11 @@ only because 0.1.0 was unreleased; after a release both would require
 deprecation (`owl:deprecated`, `dcterms:isReplacedBy`) and a major version.
 That point has now been reached: the first version is tagged `v0.1.0` as the
 baseline for iteration, so the deprecation rule applies to every later change.
+Iteration 2 exercised it for real: the record's coordinates were deprecated
+(`owl:deprecated`, `dcterms:isReplacedBy` the area and its centre), kept in the
+ontology and the dictionary's deprecated-terms appendix, and dropped from the
+business glossary; the change of meaning makes the next release 0.2.0 (before
+1.0, a minor version marks a breaking change).
 
 The guide's **two time axes** turned up inside the data as well. Records are
 republished as investigations progress, so each record has a *report time*
