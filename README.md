@@ -15,6 +15,9 @@ database it drives.
 | IV. Lifecycle | releases, deprecation, and iterating on a released model |
 | Appendices | typical LLM errors; the technical stack |
 
+A 16-slide summary of the process, in the JLA presentation layout:
+[`docs/slides.pdf`](docs/slides.pdf) (source [`docs/slides.qmd`](docs/slides.qmd)).
+
 Everything else in this repository exists to test and illustrate that guide.
 The method started from `llm-readable-ontologies.pdf` (an inspiration, not a
 template) and was revised by doing: every practice in the guide is drawn from

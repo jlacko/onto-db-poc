@@ -1,0 +1,74 @@
+% JLA presentation layout for beamer: Roboto, ink #424242 on white, red #f03838
+% bands (Bottom Red on the title slide, Top Red behind every slide title), square
+% bullets, no shadows or gradients. 4:3, after the JLA Impress template.
+\usepackage{fontspec}
+\setsansfont{Roboto}
+\setmonofont{Fira Code}[Scale=0.85]
+\usepackage{tikz}
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+
+\definecolor{jlared}{HTML}{F03838}
+\definecolor{jlareddeep}{HTML}{C9211E}
+\definecolor{jlaink}{HTML}{424242}
+\definecolor{jlacodebg}{HTML}{EEEEEE}
+
+\newlength{\jlaband}\setlength{\jlaband}{0.1905\paperheight}   % 4 cm of 21 cm
+\setbeamersize{text margin left=7mm, text margin right=7mm}
+
+\setbeamercolor{normal text}{fg=jlaink, bg=white}
+\setbeamercolor{structure}{fg=jlaink}
+\setbeamercolor{alerted text}{fg=jlareddeep}
+\setbeamercolor{itemize item}{fg=jlaink}
+\setbeamercolor{itemize subitem}{fg=jlaink}
+\setbeamercolor{enumerate item}{fg=jlaink}
+\setbeamerfont{itemize/enumerate subbody}{size=\footnotesize}
+\setbeamertemplate{itemize items}[square]
+\setbeamertemplate{itemize subitem}{--}
+\setbeamertemplate{enumerate items}[default]
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{caption}{}
+\setlength{\leftmargini}{1.2em}
+
+% Slide title: white bold on the red top band.
+\setbeamertemplate{frametitle}{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[jlared] (current page.north west) rectangle ([yshift=-\jlaband]current page.north east);
+    \node[anchor=west, text=white, font=\bfseries\LARGE, inner sep=0pt]
+      at ([xshift=7mm, yshift=-0.5\jlaband]current page.north west) {\insertframetitle};
+  \end{tikzpicture}%
+  \vspace*{\dimexpr\jlaband-1.2em\relax}}
+
+% Page number, small, bottom right.
+\setbeamertemplate{footline}{%
+  \hfill{\color{jlaink!70}\scriptsize\insertframenumber}\hspace*{4mm}\vspace*{3mm}}
+
+% Title slide: title and subtitle centred on white, red bottom band with event and date.
+\makeatletter
+\providecommand{\event}[1]{\def\jla@event{#1}}
+\def\jla@event{}
+\setbeamertemplate{title page}{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[jlared] (current page.south west) rectangle ([yshift=0.33\paperheight]current page.south east);
+    \node[text=jlaink, font=\bfseries\fontsize{30}{34}\selectfont, align=center, text width=0.9\paperwidth]
+      at ([yshift=0.12\paperheight]current page.center) {\inserttitle};
+    \node[text=jlaink, font=\itshape\large, align=center, text width=0.9\paperwidth]
+      at ([yshift=-0.01\paperheight]current page.center) {\insertsubtitle};
+    \node[text=white, font=\bfseries\large, align=center, text width=0.9\paperwidth]
+      at ([yshift=0.165\paperheight]current page.south) {\jla@event\\[0.4em]\insertdate};
+  \end{tikzpicture}}
+\makeatother
+
+% Closing slide in the same style (Bottom Red).
+\newcommand{\jlaclosing}[2]{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[jlared] (current page.south west) rectangle ([yshift=0.33\paperheight]current page.south east);
+    \node[text=jlaink, font=\bfseries\fontsize{30}{34}\selectfont]
+      at ([yshift=0.1\paperheight]current page.center) {#1};
+    \node[text=white, font=\bfseries, align=center, text width=0.85\paperwidth]
+      at ([yshift=0.165\paperheight]current page.south) {#2};
+  \end{tikzpicture}}
+
+% Inline code on the grey ground.
+\let\jlaoldtexttt\texttt
+\renewcommand{\texttt}[1]{\colorbox{jlacodebg}{\jlaoldtexttt{#1}}}
